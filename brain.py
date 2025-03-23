@@ -1,7 +1,6 @@
 import numpy as np
 rng = np.random.default_rng()
 import matplotlib.pyplot as plt
-import unittest
 
 class Area():
     neurons: list
@@ -15,11 +14,11 @@ class Area():
     p_q: float
     no_classes: int
     
-    def __init__(self, p = 0.1, cap_size = 5, beta= 0.1, p_r = 0.9, p_q = 0.1, no_classes = 10, n = 100):
+    def __init__(self, p = 0.1, cap_size = 10, beta=0.1, p_r = 0.9, p_q = 0.1, no_classes = 10, n = 100, in_n = 100):
         self.no_classes = no_classes
         self.cap_size = cap_size
         self.n = n
-        self.input_size = self.no_classes * self.cap_size
+        self.input_size = in_n #self.no_classes * self.cap_size
         self.weights = np.ones((self.input_size, n))
         self.p = p
         self.beta = beta
@@ -55,37 +54,43 @@ class Area():
     def _get_propability_matrix(self, input):
         props = np.zeros((self.no_classes, self.input_size))
         for i in range(self.no_classes):
+            _input = self.k_cap(input[i], self.cap_size)
             for j in range(self.input_size):
-                if (input[i, j] == 1):
+                if (_input[j] >= 1):
                     props[i, j] = self.p_r
                 else:
                     props[i, j] = self.p_q
         return props
 
-    def _get_activations(self, in_class_activations):        
-        SI = in_class_activations @ self.weights
+    def _get_activations(self, in_class_activations, bias=None):
+        SI = in_class_activations @ self.weights + (bias if bias is not None else 0) # Correct
+
         activations_t_1 = self.k_cap(SI, self.cap_size)
         return activations_t_1
 
-    def training(self, input = None):
-        no_rounds = 10
-        
-        test_input = input if input else self.test_classes(self.no_classes)
-
+    def training(self, input = None, no_rounds = 10):    
+        test_input = input if input is not None else self.test_classes(self.no_classes)
         props = self._get_propability_matrix(test_input)
+
+        bias = np.zeros(self.n)
+        b = 1
 
         for i in range (self.no_classes):
             ps = props[i]
-            for j in range (no_rounds):
-                in_class_activations = np.array([1 if np.random.rand() < ps[x] else 0 for x in range(self.input_size)])
-                activations_t_1 = self._get_activations(in_class_activations)
-                self.assembly_history[i] += activations_t_1
 
-                # Matrix of same size as weights 1 where in_class_activations is 1 and activations_t_1 is 1
-                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
-                self.weights *= np.ones((len(in_class_activations), self.n)) + outer_prod
+            rounds = no_rounds if type(no_rounds) == int else no_rounds[i]
+            for j in range (rounds):
+                in_class_activations = np.array([1 if np.random.rand() < ps[x] else 0 for x in range(self.input_size)])
+                activations_t_1 = self._get_activations(in_class_activations, bias)
+                self.assembly_history[i] += activations_t_1
                 
+                # Matrix of same size as weights 1 where in_class_activations is 1 and activations_t_1 is 1
+                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta # Correct
+                self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod) # Correct
+
             self.y[i] = activations_t_1
+            self.weights /= self.weights.sum(axis=0)
+            bias[activations_t_1 > 0] -= b
 
         with open ("output.txt", "w") as f:
             f.write(f"test class \n {test_input}\n")
@@ -95,23 +100,33 @@ class Area():
         return self.y
     
     def predict(self, input):
-        # From the output y find the likely class
+        """Predicts the class of the input.
+            
+        Returns:
+            Most likely class. 
+        """
         activations_t_1 = self._get_activations(input)
         
-        smallest_dist = float('inf')
         likely_class = None
+        best_score = 0
+        
         for key, values in self.y.items():
-            dist = np.sqrt(np.sum([(value - activation) ** 2 for value in values for activation in activations_t_1]))
-            
-            if dist < smallest_dist:
-                smallest_dist = dist
+            score = np.sum(np.array(values) == activations_t_1)
+            print("score: ", score)
+            if score > best_score:
+                best_score = score
                 likely_class = key
 
         return likely_class
-    
-class Tests(unittest.TestCase):
-    def test_predict_simple(self):
-        pass
+
+    def score(self, data):
+        correct = 0
+        for i, traning_data in enumerate(data):
+            prediction = self.predict(traning_data)
+            if i == prediction:
+                correct += 1
+                
+        return correct / len(data)
 
 if __name__ == '__main__':
     area = Area()
@@ -130,13 +145,11 @@ if __name__ == '__main__':
     plt.imshow(area.assembly_history, cmap='coolwarm', interpolation='nearest')
     plt.savefig('assembly_history.png')
     
-    input = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+    input = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1])
 
     test = [0 for _ in range(area.cap_size * (area.no_classes - 1))]
     test.extend([1 for _ in range(area.cap_size)])
+        
     
-    print(test)
-    
-    prediction = area.predict(test)
-    print(prediction)
+    print(area.score(area.test_classes(area.no_classes)))
     
