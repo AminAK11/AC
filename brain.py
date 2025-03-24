@@ -6,6 +6,7 @@ class Area():
     neurons: list
     inhibited: bool
     weights: np.array
+    internal_weights: np.array
     cap_size: int
     beta: float
     n: int
@@ -14,12 +15,13 @@ class Area():
     p_q: float
     no_classes: int
     
-    def __init__(self, p = 0.1, cap_size = 10, beta=0.1, p_r = 0.9, p_q = 0.1, no_classes = 10, n = 100, in_n = 100):
+    def __init__(self, p = 0.1, cap_size = 100, beta= 0.1, p_r = 0.9, p_q = 0.1, no_classes = 10, n = 1000, in_n = 784):
         self.no_classes = no_classes
         self.cap_size = cap_size
         self.n = n
         self.input_size = in_n #self.no_classes * self.cap_size
         self.weights = np.ones((self.input_size, n))
+        self.internal_weights = np.ones((n, n))
         self.p = p
         self.beta = beta
         self.p_r = p_r
@@ -28,9 +30,11 @@ class Area():
         self.y: dict[list[int], list[int]] = {}
 
         # 0 - no connection, 1 - connection
-        # Establishes initial connections betwen neurons in the brain area with prob p
+        # Establishes initial connections betwen neurons in the sensory area and neurons in the brain area with prob p
         self.weights = np.random.choice([0., 1.], (self.input_size, self.n), p = [1 - p, p])
-        np.fill_diagonal(self.weights, 0)
+        #np.fill_diagonal(self.weights, 0)
+        self.internal_weights = np.random.choice([0., 1.], (self.n, self.n), p = [1 - p, p])
+        np.fill_diagonal(self.internal_weights, 0)
         
     def k_cap(self, SI, cap_size):
         # Sorts the cap_size largest values in SI and returns their index
@@ -62,8 +66,8 @@ class Area():
                     props[i, j] = self.p_q
         return props
 
-    def _get_activations(self, in_class_activations, bias=None):
-        SI = in_class_activations @ self.weights + (bias if bias is not None else 0) # Correct
+    def _get_activations(self, in_class_activations, last_round_activations=None, bias=None):
+        SI = in_class_activations @ self.weights + (last_round_activations @ self.internal_weights if last_round_activations is not None else 0) + (bias if bias is not None else 0) # Correct
 
         activations_t_1 = self.k_cap(SI, self.cap_size)
         return activations_t_1
@@ -73,31 +77,37 @@ class Area():
         props = self._get_propability_matrix(test_input)
 
         bias = np.zeros(self.n)
-        b = 1
+        bias_penalty = -1
 
+        activations = np.zeros((10, 5, self.n))
         for i in range (self.no_classes):
             ps = props[i]
-
-            rounds = no_rounds if type(no_rounds) == int else no_rounds[i]
-            for j in range (rounds):
+            last_round_activations = np.zeros(self.n)
+            #rounds = no_rounds if type(no_rounds) == int else no_rounds[i]
+            for j in range (5):
                 in_class_activations = np.array([1 if np.random.rand() < ps[x] else 0 for x in range(self.input_size)])
-                activations_t_1 = self._get_activations(in_class_activations, bias)
+                activations_t_1 = self._get_activations(in_class_activations, last_round_activations, bias)
                 self.assembly_history[i] += activations_t_1
                 
-                # Matrix of same size as weights 1 where in_class_activations is 1 and activations_t_1 is 1
+                # Matrix of same size as weights, where in_class_activations && activations_t_1 is 1
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta # Correct
+                outer_prod_internal = np.outer(last_round_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod) # Correct
+                self.internal_weights = self.internal_weights * (np.ones((self.n, self.n)) + outer_prod_internal)
+                last_round_activations = activations_t_1
+                activations[i, j] = activations_t_1.copy()
 
             self.y[i] = activations_t_1
-            self.weights /= self.weights.sum(axis=0)
-            bias[activations_t_1 > 0] -= b
+            self.weights /= self.weights.sum(axis=0, keepdims=True)
+            self.internal_weights /= self.internal_weights.sum(axis=0, keepdims=True)
+            #bias[activations_t_1 > 0] += bias_penalty
 
         with open ("output.txt", "w") as f:
             f.write(f"test class \n {test_input}\n")
             for key, value in self.y.items():
                 f.write(f"{key}: {value}\n")
         
-        return self.y
+        return self.y, activations
     
     def predict(self, input):
         """Predicts the class of the input.

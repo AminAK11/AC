@@ -4,7 +4,7 @@ import numpy as np
 
 class Tests(unittest.TestCase):
     def setUp(self):
-        self.area = Area(no_classes=20, cap_size=60, n=500, in_n=1200)
+        self.area = Area(no_classes=20, cap_size=60, n=1000, in_n=1200)
         self.data = self.area.test_classes(self.area.no_classes)
         self.area.training(input=self.data)
         
