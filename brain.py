@@ -51,16 +51,17 @@ class Area():
         
         return test_input
 
-    def _get_propability_matrix(self, input):
-        props = np.zeros((self.no_classes, self.input_size))
-        for i in range(self.no_classes):
-            _input = self.k_cap(input[i], self.cap_size)
-            for j in range(self.input_size):
-                if (_input[j] >= 1):
-                    props[i, j] = self.p_r
-                else:
-                    props[i, j] = self.p_q
-        return props
+    # def _get_propability_matrix(self, input):
+    #     props = np.zeros((self.no_classes, self.input_size))
+    #     for i in range(self.no_classes):
+    #         # input[rounds[i], :]
+    #         _input = self.k_cap(input[i], self.cap_size)
+    #         for j in range(self.input_size):
+    #             if (_input[j] >= 1):
+    #                 props[i, j] = self.p_r
+    #             else:
+    #                 props[i, j] = self.p_q
+    #     return props
 
     def _get_activations(self, in_class_activations, bias=None):
         SI = in_class_activations @ self.weights + (bias if bias is not None else 0) # Correct
@@ -68,19 +69,20 @@ class Area():
         activations_t_1 = self.k_cap(SI, self.cap_size)
         return activations_t_1
 
-    def training(self, input = None, no_rounds = 10):    
+    def training(self, input = None, no_rounds = None):    
         test_input = input if input is not None else self.test_classes(self.no_classes)
-        props = self._get_propability_matrix(test_input)
 
         bias = np.zeros(self.n)
-        b = 1
+        bias_penalty = -1
+        
+        for i in range(self.no_classes):
 
-        for i in range (self.no_classes):
-            ps = props[i]
-
-            rounds = no_rounds if type(no_rounds) == int else no_rounds[i]
-            for j in range (rounds):
-                in_class_activations = np.array([1 if np.random.rand() < ps[x] else 0 for x in range(self.input_size)])
+            rounds = no_rounds[i]
+            for _ in range(rounds):
+                highest = self.k_cap(test_input[sum(no_rounds[:i])], self.cap_size)
+                prop = [self.p_r if h >= 1 else self.p_q for h in highest]
+                
+                in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
                 activations_t_1 = self._get_activations(in_class_activations, bias)
                 self.assembly_history[i] += activations_t_1
                 
@@ -90,7 +92,7 @@ class Area():
 
             self.y[i] = activations_t_1
             self.weights /= self.weights.sum(axis=0)
-            bias[activations_t_1 > 0] -= b
+            bias[activations_t_1 > 0] += bias_penalty
 
         with open ("output.txt", "w") as f:
             f.write(f"test class \n {test_input}\n")
@@ -105,14 +107,17 @@ class Area():
         Returns:
             Most likely class. 
         """
-        activations_t_1 = self._get_activations(input)
+        
+        highest = self.k_cap(input, self.cap_size)
+        prop = [self.p_r if h >= 1 else self.p_q for h in highest]
+        in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
+        activations_t_1 = self._get_activations(in_class_activations)
         
         likely_class = None
         best_score = 0
         
         for key, values in self.y.items():
             score = np.sum(np.array(values) == activations_t_1)
-            print("score: ", score)
             if score > best_score:
                 best_score = score
                 likely_class = key

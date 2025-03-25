@@ -4,10 +4,10 @@ import numpy as np
 from brain import *
 
 def main():
-    area = Area(no_classes=10, cap_size=300, n=2000, in_n=784)
+    area = Area(no_classes=10, cap_size=200, n=2000, in_n=784, beta=0.2)
     (X_train,y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
     
-    no_data_items = 500
+    no_data_items = 3000
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]        
@@ -16,17 +16,20 @@ def main():
     for i in range(10):
         no_of_rounds.append(labels.count(i))
     
+    print("no_of_rounds: ", no_of_rounds)
+    
     input = np.array([np.matrix.flatten(x) for x in X_train])
     y = area.training(input, no_rounds=no_of_rounds)
     
     
     diff = []
-    for i in range(20):     
+    for i in range(100):     
         out = area.predict(np.matrix.flatten(X_test[i]))
         expected = y_test[i]
         
         diff.append(out - expected)
         
+        if i >= 10: continue
         print("Expected: ", expected)
         print("Predicted: ", out)
         print("----------------------------------------")
