@@ -91,16 +91,18 @@ class Area():
                 
                 # Matrix of same size as weights, where in_class_activations && activations_t_1 is 1
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta # Correct
-                outer_prod_internal = np.outer(last_round_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod) # Correct
+                
+                outer_prod_internal = np.outer(last_round_activations, activations_t_1) * self.beta
                 self.internal_weights = self.internal_weights * (np.ones((self.n, self.n)) + outer_prod_internal)
+                
                 last_round_activations = activations_t_1
                 activations[i, j] = activations_t_1.copy()
 
             self.y[i] = activations_t_1
             self.weights /= self.weights.sum(axis=0, keepdims=True)
             self.internal_weights /= self.internal_weights.sum(axis=0, keepdims=True)
-            #bias[activations_t_1 > 0] += bias_penalty
+            bias[activations_t_1 > 0] += bias_penalty
 
         with open ("output.txt", "w") as f:
             f.write(f"test class \n {test_input}\n")
@@ -115,6 +117,7 @@ class Area():
         Returns:
             Most likely class. 
         """
+        # needs to limit input first
         activations_t_1 = self._get_activations(input)
         
         likely_class = None
@@ -122,12 +125,11 @@ class Area():
         
         for key, values in self.y.items():
             score = np.sum(np.array(values) == activations_t_1)
-            print("score: ", score)
             if score > best_score:
                 best_score = score
                 likely_class = key
 
-        return likely_class
+        return likely_class, activations_t_1
 
     def score(self, data):
         correct = 0
