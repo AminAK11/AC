@@ -4,10 +4,10 @@ import numpy as np
 from brain import *
 
 def main():
-    area = Area(no_classes=10, cap_size=500, n=1000, in_n=784, beta=0.1)
+    area = Area(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1)
     (X_train,y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
     
-    no_data_items = 200
+    no_data_items = 1000
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]        
@@ -27,7 +27,9 @@ def main():
         likely_class, activations_t_1 = area.predict(np.matrix.flatten(X_test[i]))
         expected = y_test[i]
         
-        diff.append(likely_class - expected)
+        
+        diff.append(likely_class - expected if likely_class > expected else expected - likely_class)
+
         
         if i >= 10: continue
         print("Expected: ", expected)

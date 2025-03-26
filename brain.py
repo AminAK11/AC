@@ -23,13 +23,12 @@ class Area():
         self.beta = beta
         self.p_r = p_r
         self.p_q = p_q * self.cap_size / self.n
-        self.assembly_history = np.zeros((no_classes, self.n))
         self.y: dict[list[int], list[int]] = {}
 
         # 0 - no connection, 1 - connection
         # Establishes initial connections betwen neurons in the brain area with prob p
         self.weights = np.random.choice([0., 1.], (self.input_size, self.n), p = [1 - p, p])
-        np.fill_diagonal(self.weights, 0)
+        self.weights /= self.weights.sum(axis=0)
         
     def k_cap(self, SI, cap_size):
         # Sorts the cap_size largest values in SI and returns their index
@@ -41,7 +40,7 @@ class Area():
                 out[i] = 1
         return out
 
-    def test_classes(self, no_classes):
+    def _test_classes(self, no_classes):
         n = no_classes * self.cap_size
         test_input = np.zeros((no_classes, n), dtype=int)
         
@@ -55,22 +54,25 @@ class Area():
 
         activations_t_1 = self.k_cap(SI, self.cap_size)
         return activations_t_1
+    
+    def _nums_to_binary(self, input):        
+        return np.where(input > 0, 1, 0)
 
     def training(self, input = None, no_rounds = None):    
-        test_input = input if input is not None else self.test_classes(self.no_classes)
+        test_input = input if input is not None else self._test_classes(self.no_classes)
 
         bias = np.zeros(self.n)
         bias_penalty = -1
-
         for i in range(self.no_classes):
             print(f"Training class {i} using {self.n} neurons and {no_rounds[i]} rounds")
-            for _ in range(no_rounds[i]):
-                highest = self.k_cap(test_input[sum(no_rounds[:i])], self.cap_size)
-                prop = [self.p_r if h >= 1 else self.p_q for h in highest]
+            # highest = self.k_cap(test_input[sum(no_rounds[:i])], self.cap_size)
+            for j in range(no_rounds[i]):
+                #prop = [self.p_r if h >= 1 else self.p_q for h in highest]
+                #in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
                 
-                in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
+                #in_class_activations = self.k_cap(test_input[sum(no_rounds[:i]) + j], self.cap_size)   
+                in_class_activations = self._nums_to_binary(test_input[sum(no_rounds[:i]) + j])
                 activations_t_1 = self._get_activations(in_class_activations, bias)
-                self.assembly_history[i] += activations_t_1
                 
                 # Matrix of same size as weights. Beta if both in_class_activations and activations_t_1 is 1
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
@@ -89,10 +91,11 @@ class Area():
             Most likely class. 
         """
         
-        highest = self.k_cap(input, self.cap_size)
-        prop = [self.p_r if h >= 1 else self.p_q for h in highest]
-        in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
-        activations_t_1 = self._get_activations(in_class_activations)
+        #highest = self.k_cap(input, self.cap_size)
+        #prop = [self.p_r if h >= 1 else self.p_q for h in highest]
+        #in_class_activations = np.array([(1 if np.random.rand() < prop[x] else 0) for x in range(self.input_size)])
+        #activations_t_1 = self._get_activations(in_class_activations)
+        activations_t_1 = self._get_activations(self._nums_to_binary(input))
         
         likely_class = None
         best_score = 0
