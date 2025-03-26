@@ -4,10 +4,10 @@ import numpy as np
 from brain import *
 
 def main():
-    area = Area(no_classes=10, cap_size=200, n=2000, in_n=784, beta=0.2)
+    area = Area(no_classes=10, cap_size=500, n=1000, in_n=784, beta=0.1)
     (X_train,y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
     
-    no_data_items = 3000
+    no_data_items = 200
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]        
@@ -24,24 +24,25 @@ def main():
     
     diff = []
     for i in range(100):     
-        out = area.predict(np.matrix.flatten(X_test[i]))
+        likely_class, activations_t_1 = area.predict(np.matrix.flatten(X_test[i]))
         expected = y_test[i]
         
-        diff.append(out - expected)
+        diff.append(likely_class - expected)
         
         if i >= 10: continue
         print("Expected: ", expected)
-        print("Predicted: ", out)
+        print("Predicted: ", likely_class)
         print("----------------------------------------")
     
     print("Accuracy: ", diff.count(0) / len(diff))
     
-    X = np.array(list(y.values()))
-    plt.imshow(X, cmap='coolwarm', interpolation='nearest')
-    plt.savefig('assemblies.png')
     
-    plt.imshow(area.weights, cmap='hot', interpolation='nearest')
-    plt.savefig('weights.png')
+    # X = np.array(list(y.values()))
+    # plt.imshow(X, cmap='coolwarm', interpolation='nearest')
+    # plt.savefig('assemblies.png')
+    
+    # plt.imshow(area.weights, cmap='hot', interpolation='nearest')
+    # plt.savefig('weights.png')
 
     # Plot of firing probs
     # fig, ax = plt.subplots(figsize=(10, 4))

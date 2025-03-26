@@ -1,6 +1,5 @@
 import numpy as np
 rng = np.random.default_rng()
-import matplotlib.pyplot as plt
 
 class Area():
     neurons: list
@@ -18,7 +17,7 @@ class Area():
         self.no_classes = no_classes
         self.cap_size = cap_size
         self.n = n
-        self.input_size = in_n #self.no_classes * self.cap_size
+        self.input_size = in_n
         self.weights = np.ones((self.input_size, n))
         self.p = p
         self.beta = beta
@@ -51,20 +50,8 @@ class Area():
         
         return test_input
 
-    # def _get_propability_matrix(self, input):
-    #     props = np.zeros((self.no_classes, self.input_size))
-    #     for i in range(self.no_classes):
-    #         # input[rounds[i], :]
-    #         _input = self.k_cap(input[i], self.cap_size)
-    #         for j in range(self.input_size):
-    #             if (_input[j] >= 1):
-    #                 props[i, j] = self.p_r
-    #             else:
-    #                 props[i, j] = self.p_q
-    #     return props
-
     def _get_activations(self, in_class_activations, bias=None):
-        SI = in_class_activations @ self.weights + (bias if bias is not None else 0) # Correct
+        SI = in_class_activations @ self.weights + (bias if bias is not None else 0)
 
         activations_t_1 = self.k_cap(SI, self.cap_size)
         return activations_t_1
@@ -74,11 +61,10 @@ class Area():
 
         bias = np.zeros(self.n)
         bias_penalty = -1
-        
-        for i in range(self.no_classes):
 
-            rounds = no_rounds[i]
-            for _ in range(rounds):
+        for i in range(self.no_classes):
+            print(f"Training class {i} using {self.n} neurons and {no_rounds[i]} rounds")
+            for _ in range(no_rounds[i]):
                 highest = self.k_cap(test_input[sum(no_rounds[:i])], self.cap_size)
                 prop = [self.p_r if h >= 1 else self.p_q for h in highest]
                 
@@ -86,18 +72,13 @@ class Area():
                 activations_t_1 = self._get_activations(in_class_activations, bias)
                 self.assembly_history[i] += activations_t_1
                 
-                # Matrix of same size as weights 1 where in_class_activations is 1 and activations_t_1 is 1
-                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta # Correct
-                self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod) # Correct
+                # Matrix of same size as weights. Beta if both in_class_activations and activations_t_1 is 1
+                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
+                self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
 
             self.y[i] = activations_t_1
             self.weights /= self.weights.sum(axis=0)
             bias[activations_t_1 > 0] += bias_penalty
-
-        with open ("output.txt", "w") as f:
-            f.write(f"test class \n {test_input}\n")
-            for key, value in self.y.items():
-                f.write(f"{key}: {value}\n")
         
         return self.y
     
@@ -122,39 +103,15 @@ class Area():
                 best_score = score
                 likely_class = key
 
-        return likely_class
+        return likely_class, activations_t_1
 
-    def score(self, data):
+    def score(self, X_test, y_test):
         correct = 0
-        for i, traning_data in enumerate(data):
-            prediction = self.predict(traning_data)
-            if i == prediction:
+        for x, y in zip(X_test, y_test):
+            likely_class, _ = self.predict(x)
+            if likely_class == y:
                 correct += 1
-                
-        return correct / len(data)
 
-if __name__ == '__main__':
-    area = Area()
+        return correct / len(X_test)
 
-    y = area.training()
-    plt.imshow(area.weights, cmap='hot', interpolation='nearest')
-    plt.savefig('weights.png')
-    
-    X = np.array(list(y.values()))
-    Y = np.array(list(y.keys()))
-    
-    plt.imshow(X, cmap='coolwarm', interpolation='nearest')
-    plt.savefig('assemblies.png')
-    
-    
-    plt.imshow(area.assembly_history, cmap='coolwarm', interpolation='nearest')
-    plt.savefig('assembly_history.png')
-    
-    input = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1])
 
-    test = [0 for _ in range(area.cap_size * (area.no_classes - 1))]
-    test.extend([1 for _ in range(area.cap_size)])
-        
-    
-    print(area.score(area.test_classes(area.no_classes)))
-    
