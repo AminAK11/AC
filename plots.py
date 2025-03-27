@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from brain import *
+
 from tensorflow import keras
+import time
 
 def assemblies_and_weights(cap_size=200, beta=0.1):
     area = Area(no_classes=10, cap_size=cap_size, n=10000, in_n=784, beta=beta)
@@ -12,7 +14,7 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
     X_train = [X_train[i] for i in idxs]        
     labels = [labels[i] for i in idxs]
 
-    input = np.array([np.matrix.flatten(x) for x in X_train])
+    input = np.array([x.flatten for x in X_train])
     training_y = area.training(input, no_rounds=[6000]*10)
     
     # Plotting the assemblies for each class
@@ -28,7 +30,7 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
     test_index = 15
     number = y_test[test_index]
     data = X_test[test_index]
-    predicted_class, assembly = area.predict(np.matrix.flatten(data))
+    predicted_class, assembly = area.predict(data.flatten())
     assembly = assembly.reshape(100, 100)
     for ax in axes[1]:
         ax.axis('off')
@@ -43,104 +45,88 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
     ax.imshow(area.weights, cmap='hot', interpolation='nearest')
     fig.savefig('plots/weights.png')
 
-def accuracy(cap_size=200, beta=0.1):
-    neurons = []
-    accuracies = []
 
-    for i in range(1, 11):
-        area = Area(no_classes=10, cap_size=cap_size, n=1000*i, in_n=784, beta=beta)
-        (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
+def benchmark_param(
+    area_callback,
+    item_callback,
+    name,
+    no_data_items=1000,
+    no_test_data=500,
+):
+    items = []
+    accuracies = []
+    for i in range(1,11):
+        area = area_callback(i)
+        (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
         
+        y_train = y_train[:no_data_items]
         idxs = np.argsort(y_train)
         X_train = [X_train[j] for j in idxs]        
         y_train = [y_train[j] for j in idxs]
-        
-        input = np.array([np.matrix.flatten(x) for x in X_train])
-        input_test = np.array([x.flatten() for x in X_test])
-        
-        area.training(input, no_rounds=[6000]*10)
-        
-        acc = area.score(input_test, y_test)
-        print(f"Accuracy for {i}000 neurons: {acc}")
-        
-        neurons.append(100 * i)
-        accuracies.append(acc)
-        
-    plt.plot(neurons, accuracies, 'ro-')
-    plt.xlabel('Number of neurons')
-    plt.ylabel('Accuracy')
-    plt.title('Accuracy vs Number of neurons')
-    plt.grid(True)
-    plt.savefig('plots/accuracy.png')
-    plt.show()
-        
-def best_cap_size():
-    cap_sizes = []
-    accuracies = []
 
-    for i in range(1, 11):
-        area = Area(no_classes=10, cap_size=250*i, n=10000, in_n=784, beta=0.1)
-        (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-        
-        idxs = np.argsort(y_train)
-        X_train = [X_train[j] for j in idxs]        
-        y_train = [y_train[j] for j in idxs]
-        
-        input = np.array([np.matrix.flatten(x) for x in X_train])
+        no_of_rounds = [y_train.count(i) for i in range(10)]
+        print("no_of_rounds: ", no_of_rounds)
+
+        input = np.array([x.flatten() for x in X_train])
         input_test = np.array([x.flatten() for x in X_test])
-            
-        area.training(input, no_rounds=[6000]*10)
-        acc = area.score(input_test, y_test)
-        print(f"Accuracy for cap size {250*i}: {acc}")
-        
-        cap_sizes.append(250 * i)
+
+        area.training(input, no_rounds=no_of_rounds)
+        acc = area.score(input_test[:no_test_data], y_test[:no_test_data])
+
+        print(f"Accuracy for {name} {item_callback(i)}: {acc}")
+        items.append(item_callback(i))
         accuracies.append(acc)
-        
-    plt.plot(cap_sizes, accuracies, 'ro-')
-    plt.xlabel('Cap size')
+
+    plt.figure()
+    plt.plot(items, accuracies, 'ro-')
+    plt.xlabel(name)
     plt.ylabel('Accuracy')
-    plt.title('Accuracy vs Cap size')
+    plt.title(f'Accuracy vs {name}')
     plt.grid(True)
-    plt.savefig('plots/cap_size.png')
-    plt.show()
+    plt.savefig(f'plots/{name}')
     
-    return cap_sizes[accuracies.index(max(accuracies)) + 1]
-
-def best_beta(cap_size):
-    betas = []
-    accuracies = []
-
-    for i in range(1, 11):
-        area = Area(no_classes=10, cap_size=cap_size, n=10000, in_n=784, beta=0.1 * i)
-        (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-        input = np.array([np.matrix.flatten(x) for x in X_train])
-        input_test = np.array([x.flatten() for x in X_test])
-
-        y_train = y_train
-        idxs = np.argsort(y_train)
-        X_train = [X_train[j] for j in idxs]        
-        y_train = [y_train[j] for j in idxs]
-        
-        area.training(input, no_of_rounds=[6000]*10)
-        acc = area.score(input_test, y_test)
-        print(f"Accuracy for beta {0.1*i}: {acc}")
-        
-        betas.append(0.1 * i)
-        accuracies.append(acc)
-        
-    plt.plot(betas, accuracies, 'ro-')
-    plt.xlabel('Beta')
-    plt.ylabel('Accuracy')
-    plt.title('Accuracy vs Beta')
-    plt.grid(True)
-    plt.savefig('plots/beta.png')
-    plt.show()
-    
-    return betas[accuracies.index(max(accuracies)) + 1]
-
+    return items[np.argmax(accuracies)]
 
 if __name__ == '__main__':
-    cap_size = best_cap_size()
-    beta = best_beta(cap_size)
-    accuracy(cap_size=cap_size, beta=beta)
-    assemblies_and_weights(cap_size=cap_size, beta=beta)
+    start = time.time()
+
+    # Running benchmarks with lambdas directly inline
+    # best_cap_size = benchmark_param(
+    #     area_callback=lambda i: Area(no_classes=10, cap_size=250 * i, n=10000, in_n=784, beta=0.1),
+    #     item_callback=lambda i: 250 * i,
+    #     name="cap_size",
+    #     no_data_items=200,
+    #     no_test_data=50
+    # )
+
+    # best_beta = benchmark_param(
+    #     area_callback=lambda i, best_cap_size=best_cap_size: Area(no_classes=10, cap_size=best_cap_size, n=10000, in_n=784, beta=0.1 * i),
+    #     item_callback=lambda i: 0.1 * i,
+    #     name="beta",
+    #     no_data_items=200,
+    #     no_test_data=50,
+    #     best_cap_size=best_cap_size
+    # )
+
+    # best_neuron_count = benchmark_param(
+    #     area_callback=lambda i: Area(no_classes=10, cap_size=1000, n=1000 * i + 1000, in_n=784, beta=0.2),
+    #     item_callback=lambda i: 1000 * i,
+    #     name="number_of_neurons",
+    #     no_data_items=10000,
+    #     no_test_data=1000,
+    # )
+    
+    best_neuron_count = benchmark_param(
+        area_callback=lambda i: Area(no_classes=10, cap_size=2000, n=1000 * i + 8000, in_n=784, beta=0.2),
+        item_callback=lambda i: 1000 * i,
+        name="number_of_neurons",
+        no_data_items=10000,
+        no_test_data=1000,
+    )
+    
+
+    # assemblies_and_weights(cap_size=1000, beta=0.1)
+    
+    partial_time = time.time() - start
+    print(f"Final result: \n Cap size: {"best_cap_size"},\n Beta: {"best_beta"},\n Number of neurons: {best_neuron_count}")
+    print(f"Time taken: {partial_time}")
