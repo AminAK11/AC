@@ -52,40 +52,71 @@ def benchmark_param(
     name,
     no_data_items=1000,
     no_test_data=500,
+    no_iterations=10,
 ):
     items = []
-    accuracies = []
-    for i in range(1,11):
+    test_accuracies = []
+    train_accuracy = []
+    
+    area = area_callback(0)
+    # (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
+    # X_train = np.array([x.flatten() for x in X_train])
+    # y_train = np.array([x.flatten() for x in y_train])
+    # X_test = np.array([x.flatten() for x in X_test])
+    # y_test = np.array([x.flatten() for x in y_test])
+    # first_test_acc = area.score(X_test[:no_test_data], y_test[:no_test_data])
+    # first_train_acc = area.score(X_train[:no_test_data], y_train[:no_test_data])
+
+    # items.append(item_callback(0))
+    # test_accuracies.append(first_test_acc)
+    # train_accuracy.append(first_train_acc)
+
+    for i in range(1, no_iterations + 1):
         area = area_callback(i)
         (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
         
         y_train = y_train[:no_data_items]
+        
+        
         idxs = np.argsort(y_train)
-        X_train = [X_train[j] for j in idxs]        
+        X_train = [X_train[j] for j in idxs]
         y_train = [y_train[j] for j in idxs]
+        
 
-        no_of_rounds = [y_train.count(i) for i in range(10)]
-        print("no_of_rounds: ", no_of_rounds)
+        no_of_rounds = [y_train.count(z) for z in range(10)]
+        
+        # y_train[:no_of_rounds[0]], y_train[no_of_rounds[0]:no_of_rounds[1]] = y_train[no_of_rounds[-1]], y_train[:no_of_rounds[0]]
+        #print("no_of_rounds", no_of_rounds)
+        
+        # y_train[:no_of_rounds[0]], y_train[np.sum(no_of_rounds[:-1]):] = y_train[np.sum(no_of_rounds[:-1]):], y_train[:no_of_rounds[0]]
+        
+        # X_train[:no_of_rounds[0]], X_train[np.sum(no_of_rounds[:-1]):] = X_train[np.sum(no_of_rounds[:-1]):], X_train[:no_of_rounds[0]]
+        
+        #no_of_rounds[0], no_of_rounds[-1] = no_of_rounds[-1], no_of_rounds[0]
 
         input = np.array([x.flatten() for x in X_train])
         input_test = np.array([x.flatten() for x in X_test])
 
         area.training(input, no_rounds=no_of_rounds)
+        
+        train_acc = area.score(input[:no_data_items], y_train[:no_data_items])
         acc = area.score(input_test[:no_test_data], y_test[:no_test_data])
 
         print(f"Accuracy for {name} {item_callback(i)}: {acc}")
         items.append(item_callback(i))
-        accuracies.append(acc)
+        test_accuracies.append(acc)
+        train_accuracy.append(train_acc)
 
     plt.figure()
-    plt.plot(items, accuracies, 'ro-')
+    plt.plot(items, test_accuracies, 'ro-')
+    plt.plot(items, train_accuracy, 'ro-', color='blue')
     plt.xlabel(name)
     plt.ylabel('Accuracy')
     plt.title(f'Accuracy vs {name}')
     plt.grid(True)
-    plt.savefig(f'plots/{name}')
+    plt.savefig(f'plots/{name}1')
     
-    return items[np.argmax(accuracies)]
+    return items[np.argmax(test_accuracies)]
 
 if __name__ == '__main__':
     start = time.time()
@@ -116,12 +147,21 @@ if __name__ == '__main__':
     #     no_test_data=1000,
     # )
     
+    # best_neuron_count = benchmark_param(
+    #     area_callback=lambda i: Area(no_classes=10, cap_size=(i * 100 + 500) // 10, n=1000 * i + 1000, in_n=784, beta=0.1),
+    #     item_callback=lambda i: 500 * i + 500,
+    #     name="number_of_neurons",
+    #     no_data_items=300,
+    #     no_test_data=300,
+    # )
+
     best_neuron_count = benchmark_param(
-        area_callback=lambda i: Area(no_classes=10, cap_size=2000, n=1000 * i + 8000, in_n=784, beta=0.2),
-        item_callback=lambda i: 1000 * i,
+        area_callback=lambda i: Area(no_classes=10, cap_size=800, n=8000, in_n=784, beta=0.1),
+        item_callback=lambda i: 8000,
         name="number_of_neurons",
-        no_data_items=10000,
-        no_test_data=1000,
+        no_data_items=500,
+        no_test_data=500,
+        no_iterations=4
     )
     
 
