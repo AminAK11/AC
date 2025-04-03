@@ -5,7 +5,7 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=200, beta=0.1):
+def assemblies_and_weights(cap_size=1000, beta=0.1):
     area = Area(no_classes=10, cap_size=cap_size, n=10000, in_n=784, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
     
@@ -97,7 +97,7 @@ def benchmark_param(
         input = np.array([x.flatten() for x in X_train])
         input_test = np.array([x.flatten() for x in X_test])
 
-        area.training(input, no_rounds=no_of_rounds)
+        y = area.training(input, no_rounds=no_of_rounds)
         
         train_acc = area.score(input[:no_data_items], y_train[:no_data_items])
         acc = area.score(input_test[:no_test_data], y_test[:no_test_data])
@@ -106,6 +106,27 @@ def benchmark_param(
         items.append(item_callback(i))
         test_accuracies.append(acc)
         train_accuracy.append(train_acc)
+
+    fig2, ax = plt.subplots()
+    def overlap(g, h):
+        v = np.sum([a == 1 and b == 1 for (a, b) in zip(y[g], y[h])])
+        return v / len(y[g])
+    overlap_plot_matrix = np.zeros((10, 10))
+    for g in range(10):
+        for h in range(10):
+            overlap_plot_matrix[g,h] = overlap(g,h)
+    
+    overlap_plot_matrix /= overlap_plot_matrix.sum(axis = 0)
+    for c in range(10):
+        overlap_plot_matrix[c,c] = 1 - sum(np.concatenate([overlap_plot_matrix[c, :c], overlap_plot_matrix[c, c+1:]]))
+        
+    for i in range(10):
+        for j in range(10):
+            ax.text(i,j, round(overlap_plot_matrix[i,j], 2), va='center', ha='center')
+
+    ax.imshow(overlap_plot_matrix, cmap='cool',)
+    ax.set_title('Overlap between classes')
+    fig2.savefig('plots/overlap1.png')
 
     plt.figure()
     plt.plot(items, test_accuracies, 'ro-')
@@ -156,12 +177,12 @@ if __name__ == '__main__':
     # )
 
     best_neuron_count = benchmark_param(
-        area_callback=lambda i: Area(no_classes=10, cap_size=800, n=8000, in_n=784, beta=0.1),
-        item_callback=lambda i: 8000,
+        area_callback=lambda i: Area(no_classes=10, cap_size=30, n=100, in_n=784, beta=0.1),
+        item_callback=lambda i: 100,
         name="number_of_neurons",
-        no_data_items=500,
-        no_test_data=500,
-        no_iterations=4
+        no_data_items=100,
+        no_test_data=100,
+        no_iterations=1
     )
     
 

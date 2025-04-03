@@ -24,7 +24,7 @@ class Area():
         self.beta = beta
         self.p_r = p_r
         self.p_q = p_q * self.cap_size / self.n
-        self.y: dict[list[int], list[int]] = {}
+        self.y: dict[int, list[int]] = {}
 
         # 0 - no connection, 1 - connection
         # Establishes initial connections betwen neurons in the brain area with prob p
@@ -62,7 +62,6 @@ class Area():
 
         bias = np.zeros(self.n)
         bias_penalty = -1
-        results = np.array([0.] * self.n)
         
         for i in range(self.no_classes):
             print(f"Training class {i} using {self.n} neurons and {no_rounds[i]} rounds")
@@ -72,7 +71,6 @@ class Area():
                 activations_t_1 = self._get_activations(in_class_activations, bias)
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
-                results += activations_t_1
 
             self.y[i] = np.where(activations_t_1 > 0, 1, 0)
             self.weights /= self.weights.sum(axis=0)
