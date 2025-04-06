@@ -1,6 +1,5 @@
 import numpy as np
 rng = np.random.default_rng()
-from collections import defaultdict
 
 class Area():
     neurons: list
@@ -51,42 +50,48 @@ class Area():
         activations_t_1 = self._k_cap(SI, self.cap_size)
         return activations_t_1
     
-    def _nums_to_binary(self, input):
-        #np.where(input > 0, 1, 0)
+    def _get_in_class_activations(self, input, activations_callback=None):
+        if activations_callback is not None: return activations_callback(input)
+        
         normed_input = input / 255
         out = np.astype(np.random.uniform(0, 1, (self.input_size)) < normed_input, np.int64)
         return out
 
-    def training(self, input = None, no_rounds = None):
-        test_input = input if input is not None else self._test_classes(self.no_classes)
-
-        bias = np.zeros(self.n)
-        bias_penalty = -1
+    def training(self, test_input = None, no_rounds = None, activations_callback=None):
+        #bias = np.zeros(self.n)
+        #bias_penalty = -1
         
         for i in range(self.no_classes):
             print(f"Training class {i} using {self.n} neurons and {no_rounds[i]} rounds")
             no_input = sum(no_rounds[:i])
             for j in range(no_rounds[i]):
-                in_class_activations = self._nums_to_binary(test_input[no_input + j])
-                activations_t_1 = self._get_activations(in_class_activations, bias)
+                in_class_activations = self._get_in_class_activations(test_input[no_input + j], activations_callback)
+                activations_t_1 = self._get_activations(in_class_activations, None)
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
 
+
             self.y[i] = np.where(activations_t_1 > 0, 1, 0)
             self.weights /= self.weights.sum(axis=0)
-            bias[activations_t_1 > 0] += bias_penalty
+            #bias[activations_t_1 > 0] += bias_penalty
+    
+        with open ("output.txt", "w") as f:
+            f.write(f"test class \\n")
+            for test in test_input:
+                f.write(f"{test}\n")
+
+            for key, value in self.y.items():
+                f.write(f"{key}: {value}\n")
         
         return self.y
-    
 
-    
-    def predict(self, input):
+    def predict(self, input, activations_callback=None):
         """Predicts the class of the input.
             
         Returns:
             Most likely class. 
         """
-        activations_t_1 = self._get_activations(self._nums_to_binary(input))
+        activations_t_1 = self._get_activations(self._get_in_class_activations(input, activations_callback))
         
         likely_class = None
         best_score = 0
@@ -101,7 +106,7 @@ class Area():
     def score(self, X_test, y_test):
         correct = 0
         
-        wrong = defaultdict(int)
+        wrong = {i: 0 for i in range(self.no_classes)}
         for x, y in zip(X_test, y_test):
 
             likely_class, _ = self.predict(x)
@@ -112,30 +117,3 @@ class Area():
             
         print("Wrong predictions:", wrong)
         return correct / len(X_test)
-'''
-{
-(0): 7,
-(1): 2,
-(2): 19,
-(3): 8,
-(4): 24,
-(5): 39,
-(6): 9,
-(7): 25,
-(8): 26,
-(9): 35
-}
-'''
-'''
-(9): 23,
-(8): 9
-(7): 47,
-(6): 16,
-(5): 37,
-(4): 52,
-(3): 48,
-(2): 30,
-(1): 4,
-(0): 4
-'''
-
