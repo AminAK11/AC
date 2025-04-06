@@ -15,7 +15,7 @@ def test_classes(area, no_classes):
 
 class Tests(unittest.TestCase):
     def setUp(self):
-        self.area = Area(no_classes=2, cap_size=100, n=200, in_n = 200)
+        self.area = Area(no_classes=2, cap_size=140, n=200, in_n = 280)
         self.data = test_classes(self.area, self.area.no_classes)
         self.data_per_class = 20
         self.data = np.repeat(self.data, self.data_per_class, axis=0)

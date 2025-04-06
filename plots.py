@@ -5,36 +5,39 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=1000, beta=0.1):
-    area = Area(no_classes=10, cap_size=cap_size, n=10000, in_n=784, beta=beta)
+def assemblies_and_weights(cap_size=30, beta=0.1):
+    area = Area(no_classes=10, cap_size=cap_size, n=100, in_n=784, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    
-    labels = y_train
+    no_data_items = 200
+    labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]        
     labels = [labels[i] for i in idxs]
 
-    input = np.array([x.flatten for x in X_train])
-    training_y = area.training(input, no_rounds=[6000]*10)
-    
+    input = np.array([x.flatten() for x in X_train])
+    no_of_rounds = [labels.count(z) for z in range(10)]
+
+    training_y = area.training(input, no_rounds=no_of_rounds)
+
+
     # Plotting the assemblies for each class
     res = []
     for y in training_y.values():
-        res.append(np.array(y).reshape(100, 100))
+        res.append(np.array(y).reshape(10, 10))
     
     fig, axes = plt.subplots(2, len(res), figsize=(5 * len(res), 5))
     for i, y in enumerate(res):
-        axes[0,i].imshow(res[i], cmap='binary')
+        axes[0,i].imshow(res[i], cmap='coolwarm', interpolation='nearest')
         axes[0,i].title.set_text(f'Assembly for number: {i}')
 
-    test_index = 15
+    test_index = 20
     number = y_test[test_index]
     data = X_test[test_index]
     predicted_class, assembly = area.predict(data.flatten())
-    assembly = assembly.reshape(100, 100)
+    assembly = assembly.reshape(10, 10)
     for ax in axes[1]:
         ax.axis('off')
-    axes[1, predicted_class].imshow(assembly, cmap='binary')
+    axes[1, predicted_class].imshow(assembly, cmap='coolwarm', interpolation='nearest')
     axes[1, predicted_class].title.set_text(f'Number: {number}, Predicted: {predicted_class}')
     plt.subplots_adjust(hspace=0.5)
     
@@ -163,12 +166,11 @@ if __name__ == '__main__':
     # )
 
     # best_beta = benchmark_param(
-    #     area_callback=lambda i, best_cap_size=best_cap_size: Area(no_classes=10, cap_size=best_cap_size, n=10000, in_n=784, beta=0.1 * i),
+    #     area_callback=lambda i : Area(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1 * i),
     #     item_callback=lambda i: 0.1 * i,
     #     name="beta",
     #     no_data_items=200,
     #     no_test_data=50,
-    #     best_cap_size=best_cap_size
     # )
 
     # best_neuron_count = benchmark_param(
@@ -197,11 +199,11 @@ if __name__ == '__main__':
     # )
     
     overlap_plots(
-        Area(p=0.1, no_classes=10, cap_size=60, n=200, in_n=784, beta=0.1),
+        Area(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
         no_data_items=1000
     )
 
-    # assemblies_and_weights(cap_size=1000, beta=0.1)
+    # assemblies_and_weights()
     
     partial_time = time.time() - start
     print(f"Time taken: {partial_time}")
