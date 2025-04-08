@@ -5,10 +5,10 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=30, beta=0.1):
-    area = Area(no_classes=10, cap_size=cap_size, n=100, in_n=784, beta=beta)
+def assemblies_and_weights(cap_size=100, beta=0.1):
+    brain = Brain(no_classes=10, cap_size=cap_size, n=1000, in_n=784*4, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    no_data_items = 200
+    no_data_items = 1000
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]        
@@ -17,40 +17,52 @@ def assemblies_and_weights(cap_size=30, beta=0.1):
     input = np.array([x.flatten() for x in X_train])
     no_of_rounds = [labels.count(z) for z in range(10)]
 
-    training_y = area.training(input, no_rounds=no_of_rounds)
-
+    training_y = brain.section_training(input, no_rounds=no_of_rounds)
+    
+    score = brain.score(input[:no_data_items], labels[:no_data_items])
+    print("Training accuracy: ", score)
 
     # Plotting the assemblies for each class
     res = []
     for y in training_y.values():
-        res.append(np.array(y).reshape(10, 10))
+        res.append(np.array(y).reshape(10, 100))
     
-    fig, axes = plt.subplots(2, len(res), figsize=(5 * len(res), 5))
+    fig, axes = plt.subplots(4, len(res), figsize=(5 * len(res), 5))
     for i, y in enumerate(res):
-        axes[0,i].imshow(res[i], cmap='coolwarm', interpolation='nearest')
+        axes[0,i].imshow(res[i], cmap='viridis', interpolation='nearest')
         axes[0,i].title.set_text(f'Assembly for number: {i}')
 
-    test_index = 20
-    number = y_test[test_index]
-    data = X_test[test_index]
-    predicted_class, assembly = area.predict(data.flatten())
-    assembly = assembly.reshape(10, 10)
-    for ax in axes[1]:
-        ax.axis('off')
-    axes[1, predicted_class].imshow(assembly, cmap='coolwarm', interpolation='nearest')
-    axes[1, predicted_class].title.set_text(f'Number: {number}, Predicted: {predicted_class}')
+    for ax1, ax2, ax3 in zip(axes[1], axes[2], axes[3]):
+        ax1.axis('off')
+        ax2.axis('off')
+        ax3.axis('off')
+    
+    for i in range(1, 2):
+        test_index = 20 * i
+        number = y_test[test_index]
+        data = X_test[test_index]
+        
+        predicted_class, assembly = brain.predict(data.flatten())
+        assembly = assembly.reshape(10, 100)
+
+        acti = brain._get_in_class_activations(data.flatten()).reshape(56, 56)
+        axes[3, predicted_class].imshow(data, cmap='viridis', interpolation='nearest')
+        axes[2, predicted_class].imshow(acti.reshape(56, 56), cmap='viridis', interpolation='nearest')
+        axes[1, predicted_class].imshow(assembly, cmap='viridis', interpolation='nearest')
+        axes[1, predicted_class].title.set_text(f'Number: {number}, Predicted: {predicted_class}')
+    
     plt.subplots_adjust(hspace=0.5)
     
     fig.savefig('plots/assemblies.png')
 
     # Plotting the weights
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.imshow(area.weights, cmap='hot', interpolation='nearest')
+    ax.imshow(brain.weights, cmap='hot', interpolation='nearest')
     fig.savefig('plots/weights.png')
 
 
 def benchmark_param(
-    area_callback,
+    brain_callback,
     item_callback,
     name,
     no_data_items=1000,
@@ -76,10 +88,10 @@ def benchmark_param(
     '''
     Accuracy before training
     '''
-    area = area_callback(0)
-    area.training(input, no_rounds=[1]*10)
-    first_test_acc = area.score(input_test[:no_test_data], y_test[:no_test_data])
-    first_train_acc = area.score(input, y_train)
+    brain = brain_callback(0)
+    brain.section_training(input, no_rounds=[1]*10)
+    first_test_acc = brain.score(input_test[:no_test_data], y_test[:no_test_data])
+    first_train_acc = brain.score(input, y_train)
     
     items.append(item_callback(0))
     test_accuracies.append(first_test_acc)
@@ -95,11 +107,11 @@ def benchmark_param(
         
         # no_of_rounds[0], no_of_rounds[-1] = no_of_rounds[-1], no_of_rounds[0]
 
-        area = area_callback(i)
-        area.training(input, no_rounds=no_of_rounds)
+        brain = brain_callback(i)
+        brain.section_training(input, no_rounds=no_of_rounds)
         
-        train_acc = area.score(input[:no_data_items], y_train[:no_data_items])
-        acc = area.score(input_test[:no_test_data], y_test[:no_test_data])
+        train_acc = brain.score(input[:no_data_items], y_train[:no_data_items])
+        acc = brain.score(input_test[:no_test_data], y_test[:no_test_data])
 
         print(f"Accuracy for {name} {item_callback(i)}: {acc}")
         items.append(item_callback(i))
@@ -117,7 +129,7 @@ def benchmark_param(
     
     return items[np.argmax(test_accuracies)]
 
-def overlap_plots(area, no_data_items=1000):
+def overlap_plots(brain, no_data_items=1000):
     (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()    
     y_train = y_train[:no_data_items]
         
@@ -129,13 +141,13 @@ def overlap_plots(area, no_data_items=1000):
     input = np.array([x.flatten() for x in X_train])
     input_test = np.array([p.flatten() for p in X_test])
     
-    area.training(input, no_rounds=no_of_rounds)
-    area.predict(input_test[0].flatten())
+    brain.section_training(input, no_rounds=no_of_rounds)
+    brain.predict(input_test[0].flatten())
     
     fig2, ax = plt.subplots()
     def overlap(g, h):
-        v = np.sum([a == 1 and b == 1 for (a, b) in zip(area.y[g], area.y[h])])
-        return v / area.cap_size
+        v = np.sum([a == 1 and b == 1 for (a, b) in zip(brain.y[g], brain.y[h])])
+        return v / brain.cap_size
     overlap_plot_matrix = np.zeros((10, 10))
     for g in range(10):
         for h in range(10):
@@ -157,7 +169,7 @@ if __name__ == '__main__':
     start = time.time()
 
     # best_cap_size = benchmark_param(
-    #     area_callback=lambda i: Area(p=0.2, no_classes=10, cap_size=50*i + 50, n=500, in_n=784, beta=0.2),
+    #     brain_callback=lambda i: Brain(p=0.2, no_classes=10, cap_size=50*i + 50, n=500, in_n=784, beta=0.2),
     #     item_callback=lambda i: 50*i,
     #     name="cap_size",
     #     no_data_items=500,
@@ -166,7 +178,7 @@ if __name__ == '__main__':
     # )
 
     # best_beta = benchmark_param(
-    #     area_callback=lambda i : Area(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1 * i),
+    #     brain_callback=lambda i : Brain(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1 * i),
     #     item_callback=lambda i: 0.1 * i,
     #     name="beta",
     #     no_data_items=200,
@@ -174,7 +186,7 @@ if __name__ == '__main__':
     # )
 
     # best_neuron_count = benchmark_param(
-    #     area_callback=lambda i: Area(no_classes=10, cap_size=1000, n=1000 * i + 1000, in_n=784, beta=0.2),
+    #     brain_callback=lambda i: Brain(no_classes=10, cap_size=1000, n=1000 * i + 1000, in_n=784, beta=0.2),
     #     item_callback=lambda i: 1000 * i,
     #     name="number_of_neurons",
     #     no_data_items=10000,
@@ -182,7 +194,7 @@ if __name__ == '__main__':
     # )
     
     # best_neuron_count = benchmark_param(
-    #     area_callback=lambda i: Area(no_classes=10, cap_size=(i * 100 + 500) // 10, n=1000 * i + 1000, in_n=784, beta=0.1),
+    #     brain_callback=lambda i: Brain(no_classes=10, cap_size=(i * 100 + 500) // 10, n=1000 * i + 1000, in_n=784, beta=0.1),
     #     item_callback=lambda i: 500 * i + 500,
     #     name="number_of_neurons",
     #     no_data_items=300,
@@ -190,20 +202,20 @@ if __name__ == '__main__':
     # )
 
     # best_neuron_count = benchmark_param(
-    #     area_callback=lambda i: Area(p=0.2, no_classes=10, cap_size=10, n=100, in_n=784, beta=0.2),
-    #     item_callback=lambda i: 500,
+    #     brain_callback=lambda i: Brain(p=0.1, no_classes=10, cap_size=10, n=1000, in_n=784, beta=0.1),
+    #     item_callback=lambda i: 100,
     #     name="number_of_neurons",
-    #     no_data_items=5000,
-    #     no_test_data=1000,
+    #     no_data_items=100,
+    #     no_test_data=100,
     #     no_iterations=1
     # )
     
-    overlap_plots(
-        Area(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
-        no_data_items=1000
-    )
+    # overlap_plots(
+    #     Brain(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
+    #     no_data_items=1000
+    # )
 
-    # assemblies_and_weights()
+    assemblies_and_weights()
     
     partial_time = time.time() - start
     print(f"Time taken: {partial_time}")

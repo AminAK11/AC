@@ -4,7 +4,7 @@ import numpy as np
 from brain import *
 
 def main():
-    area = Area(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1)
+    brain = Brain(no_classes=10, cap_size=100, n=1000, in_n=784, beta=0.1)
     (X_train,y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
     
     no_data_items = 1000
@@ -19,12 +19,12 @@ def main():
     print("no_of_rounds: ", no_of_rounds)
     
     input = np.array([np.matrix.flatten(x) for x in X_train])
-    y = area.training(input, no_rounds=no_of_rounds)
+    y = brain.training(input, no_rounds=no_of_rounds)
     
     
     diff = []
     for i in range(100):     
-        likely_class, activations_t_1 = area.predict(np.matrix.flatten(X_test[i]))
+        likely_class, activations_t_1 = brain.predict(np.matrix.flatten(X_test[i]))
         expected = y_test[i]
         
         
@@ -43,13 +43,13 @@ def main():
     # plt.imshow(X, cmap='coolwarm', interpolation='nearest')
     # plt.savefig('assemblies.png')
     
-    # plt.imshow(area.weights, cmap='hot', interpolation='nearest')
+    # plt.imshow(brain.weights, cmap='hot', interpolation='nearest')
     # plt.savefig('weights.png')
 
     # Plot of firing probs
     # fig, ax = plt.subplots(figsize=(10, 4))
     # for i in range(10):
-    #     ax.bar(np.arange(area.n), y[i, -1].mean(axis=0)[idx], label=i)
+    #     ax.bar(np.arange(brain.n), y[i, -1].mean(axis=0)[idx], label=i)
     # ax.legend(loc='upper right', ncol=2)
     # ax.spines['top'].set_visible(False)
     # ax.spines['right'].set_visible(False)
