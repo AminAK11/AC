@@ -5,10 +5,10 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=200, beta=0.1):
+def assemblies_and_weights(cap_size=200, beta=1):
     brain = Brain(no_classes=10, cap_size=cap_size, n=5625, in_n=784*4, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    no_data_items = 100
+    no_data_items = 20
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]
@@ -16,11 +16,31 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
 
     input = np.array([x.flatten() for x in X_train])
     no_of_rounds = [labels.count(z) for z in range(10)]
+    lowest_data_number = np.amin(no_of_rounds)
+    input2 = []
+    for i in range(10):
+        input2.append(input[sum(no_of_rounds[:i]) : sum(no_of_rounds[:i]) + lowest_data_number])
+    no_of_rounds = [lowest_data_number] * 10
+    print(lowest_data_number)
+    
+    input = [X_train[y_train == i][:lowest_data_number] for i in range(10)]
+    
+    
+    # [0,1,1,2,3,4,4,4,5,6,7,8,9]
+    # [1,2,1,1,3,1,1,1,1,1]
+    
+    for i in range(10):
+        plt.imshow(input[i].reshape(28,28), cmap='viridis', interpolation='nearest')
+        plt.show()
 
+    test_data = np.array([x.flatten() for x in X_test])
     training_y = brain.section_training(input, no_rounds=no_of_rounds)
     
-    score = brain.score(input[:no_data_items], labels[:no_data_items])
+    score = brain.score(input[:1000], labels[:1000])
+    test_score = brain.score(test_data[:1000], y_test[:1000])
+    
     print("Training accuracy: ", score)
+    print("Test training accuracy: ", test_score)
 
     # Plotting the assemblies for each class
     res = []
@@ -37,8 +57,8 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
         ax2.axis('off')
         ax3.axis('off')
     
-    for i in range(40):
-        test_index = 20 * i
+    for i in range(45):
+        test_index = 13 * i
         number = y_test[test_index]
         data = X_test[test_index]
         
@@ -51,7 +71,7 @@ def assemblies_and_weights(cap_size=200, beta=0.1):
         axes[1, predicted_class].imshow(assembly, cmap='viridis', interpolation='nearest')
         axes[1, predicted_class].title.set_text(f'Number: {number}, Predicted: {predicted_class}')
     
-    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(hspace=0.8)
     
     fig.savefig('plots/assemblies.png')
 
