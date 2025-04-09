@@ -5,13 +5,13 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=100, beta=0.1):
-    brain = Brain(no_classes=10, cap_size=cap_size, n=1000, in_n=784*4, beta=beta)
+def assemblies_and_weights(cap_size=200, beta=0.1):
+    brain = Brain(no_classes=10, cap_size=cap_size, n=5625, in_n=784*4, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    no_data_items = 1000
+    no_data_items = 100
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
-    X_train = [X_train[i] for i in idxs]        
+    X_train = [X_train[i] for i in idxs]
     labels = [labels[i] for i in idxs]
 
     input = np.array([x.flatten() for x in X_train])
@@ -25,7 +25,7 @@ def assemblies_and_weights(cap_size=100, beta=0.1):
     # Plotting the assemblies for each class
     res = []
     for y in training_y.values():
-        res.append(np.array(y).reshape(10, 100))
+        res.append(np.array(y).reshape(75, 75))
     
     fig, axes = plt.subplots(4, len(res), figsize=(5 * len(res), 5))
     for i, y in enumerate(res):
@@ -37,13 +37,13 @@ def assemblies_and_weights(cap_size=100, beta=0.1):
         ax2.axis('off')
         ax3.axis('off')
     
-    for i in range(1, 2):
+    for i in range(40):
         test_index = 20 * i
         number = y_test[test_index]
         data = X_test[test_index]
         
         predicted_class, assembly = brain.predict(data.flatten())
-        assembly = assembly.reshape(10, 100)
+        assembly = assembly.reshape(75, 75)
 
         acti = brain._get_in_class_activations(data.flatten()).reshape(56, 56)
         axes[3, predicted_class].imshow(data, cmap='viridis', interpolation='nearest')
@@ -56,7 +56,7 @@ def assemblies_and_weights(cap_size=100, beta=0.1):
     fig.savefig('plots/assemblies.png')
 
     # Plotting the weights
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(75, 75))
     ax.imshow(brain.weights, cmap='hot', interpolation='nearest')
     fig.savefig('plots/weights.png')
 
