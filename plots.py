@@ -5,39 +5,44 @@ from brain import *
 from tensorflow import keras
 import time
 
-def assemblies_and_weights(cap_size=200, beta=1):
-    brain = Brain(no_classes=10, cap_size=cap_size, n=5625, in_n=784*4, beta=beta)
-    (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    no_data_items = 20
+def get_data(no_data_items, X_train, y_train):
     labels = y_train[:no_data_items]
     idxs = np.argsort(labels)
     X_train = [X_train[i] for i in idxs]
     labels = [labels[i] for i in idxs]
 
-    input = np.array([x.flatten() for x in X_train])
     no_of_rounds = [labels.count(z) for z in range(10)]
     lowest_data_number = np.amin(no_of_rounds)
-    input2 = []
-    for i in range(10):
-        input2.append(input[sum(no_of_rounds[:i]) : sum(no_of_rounds[:i]) + lowest_data_number])
-    no_of_rounds = [lowest_data_number] * 10
-    print(lowest_data_number)
     
-    input = [X_train[y_train == i][:lowest_data_number] for i in range(10)]
-    
-    
-    # [0,1,1,2,3,4,4,4,5,6,7,8,9]
-    # [1,2,1,1,3,1,1,1,1,1]
-    
-    for i in range(10):
-        plt.imshow(input[i].reshape(28,28), cmap='viridis', interpolation='nearest')
-        plt.show()
+    data = []
+    new_labels = []
+    class_counts = {i: 0 for i in range(10)}
 
-    test_data = np.array([x.flatten() for x in X_test])
-    training_y = brain.section_training(input, no_rounds=no_of_rounds)
+    for x, y in zip(X_train, labels):
+        if class_counts[y] < lowest_data_number:
+            data.append(x)
+            new_labels.append(y)
+            class_counts[y] += 1
+
+        if all(count == lowest_data_number for count in class_counts.values()):
+            break
+
+    no_of_rounds = [lowest_data_number] * 10
     
-    score = brain.score(input[:1000], labels[:1000])
-    test_score = brain.score(test_data[:1000], y_test[:1000])
+    return np.array([x.flatten() for x in data]), new_labels, no_of_rounds
+
+def assemblies_and_weights(cap_size=200, beta=1):
+    brain = Brain(no_classes=10, cap_size=cap_size, n=5625, in_n=784*4, beta=beta)
+    (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
+    data, labels, no_of_rounds = get_data(300, X_train, y_train)
+    assembly_size = 75
+    no_test_data = 1000
+    
+    training_y = brain.section_training(data, no_rounds=no_of_rounds)
+    score = brain.score(data[:no_test_data], labels[:no_test_data])
+    
+    test_data = np.array([x.flatten() for x in X_test])
+    test_score = brain.score(test_data[:no_test_data], y_test[:no_test_data])
     
     print("Training accuracy: ", score)
     print("Test training accuracy: ", test_score)
@@ -45,7 +50,7 @@ def assemblies_and_weights(cap_size=200, beta=1):
     # Plotting the assemblies for each class
     res = []
     for y in training_y.values():
-        res.append(np.array(y).reshape(75, 75))
+        res.append(np.array(y).reshape(assembly_size, assembly_size))
     
     fig, axes = plt.subplots(4, len(res), figsize=(5 * len(res), 5))
     for i, y in enumerate(res):
@@ -63,7 +68,7 @@ def assemblies_and_weights(cap_size=200, beta=1):
         data = X_test[test_index]
         
         predicted_class, assembly = brain.predict(data.flatten())
-        assembly = assembly.reshape(75, 75)
+        assembly = assembly.reshape(assembly_size, assembly_size)
 
         acti = brain._get_in_class_activations(data.flatten()).reshape(56, 56)
         axes[3, predicted_class].imshow(data, cmap='viridis', interpolation='nearest')
@@ -72,7 +77,6 @@ def assemblies_and_weights(cap_size=200, beta=1):
         axes[1, predicted_class].title.set_text(f'Number: {number}, Predicted: {predicted_class}')
     
     plt.subplots_adjust(hspace=0.8)
-    
     fig.savefig('plots/assemblies.png')
 
     # Plotting the weights

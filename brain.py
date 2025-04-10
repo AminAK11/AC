@@ -1,9 +1,6 @@
 import numpy as np
-from scipy import signal
 rng = np.random.default_rng()
 np.set_printoptions(threshold=np.inf)
-import skimage.measure
-import matplotlib.pyplot as plt
 
 
 class Brain():
@@ -60,7 +57,7 @@ class Brain():
     def _get_in_class_activations(self, input, activations_callback=None):
         if activations_callback is not None: return activations_callback(input)
 
-        input = np.where(input > 200, 1, 0)
+        input = np.where(input > 100, 1, 0)
         test = self._resize(input.reshape((28, 28)))
         # tanh = np.tanh(test)
         # tanh = (np.random.rand(len(tanh)) < tanh).astype(int)
@@ -141,12 +138,12 @@ class Brain():
         
         wrong = {i: 0 for i in range(self.no_classes)}
         for x, y in zip(X_test, y_test):
-
             likely_class, _ = self.predict(x)
             if likely_class == y:
                 correct += 1
             else:
                 wrong[y] += 1
-            
+
+        print(f"Total correct: {correct}/{len(X_test)}")
         print("Wrong predictions:", wrong)
         return correct / len(X_test)
