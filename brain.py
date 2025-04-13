@@ -1,6 +1,7 @@
 import numpy as np
 rng = np.random.default_rng()
 np.set_printoptions(threshold=np.inf)
+import skimage.measure as sm
 
 
 class Brain():
@@ -57,12 +58,15 @@ class Brain():
     def _get_in_class_activations(self, input, activations_callback=None):
         if activations_callback is not None: return activations_callback(input)
 
-        input = np.where(input > 100, 1, 0)
-        test = self._resize(input.reshape((28, 28)))
+        input = np.where(input > 50, 1, 0)
+        
+        resized = self._resize(input.reshape((28, 28)))
+        
+        # reduced = sm.block_reduce(resized, (2, 2), np.min)
         # tanh = np.tanh(test)
         # tanh = (np.random.rand(len(tanh)) < tanh).astype(int)
 
-        return test.flatten()
+        return resized.flatten()
 
 
     def training(self, test_input = None, no_rounds = None, activations_callback=None):
@@ -86,7 +90,6 @@ class Brain():
         return self.y
     
     def section_activations(self, in_class_activations, i, bias=None, neuron_pr_class=None):
-        #bias = None
         b = in_class_activations @ self.weights + (bias if bias is not None else 0)
         b[:int(neuron_pr_class * i)] = 0
         b[int(neuron_pr_class * (i+1)):] = 0
@@ -94,7 +97,7 @@ class Brain():
         return b
     
     def section_training(self, test_input = None, no_rounds = None, activations_callback=None):
-        bias = None #np.zeros(self.n)
+        bias = np.zeros(self.n)
         bias_penalty = -1
         neuron_pr_class = self.n / self.no_classes
         
@@ -103,13 +106,13 @@ class Brain():
             no_input = sum(no_rounds[:i])
             for j in range(no_rounds[i]):
                 in_class_activations = self._get_in_class_activations(test_input[no_input + j], activations_callback)
-                activations_t_1 = np.where(self.section_activations(in_class_activations, i, bias, neuron_pr_class) > np.finfo(float).eps, 1, 0)
+                activations_t_1 = np.tanh(self.section_activations(in_class_activations, i, bias, neuron_pr_class))
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
 
             self.y[i] = activations_t_1
             self.weights /= self.weights.sum(axis=0)
-            # bias[activations_t_1 > 0] += bias_penalty
+            bias[activations_t_1 > 0] += bias_penalty
         
         return self.y
 
@@ -119,17 +122,16 @@ class Brain():
         best_score = 0
         final_activations_t_1 = None
         
-        for i in range(10):
+        for i in range(self.no_classes):
             activations_t_1 = self.section_activations(self._get_in_class_activations(input, activations_callback), i, bias=None, neuron_pr_class=neuron_pr_class)
             
-            score = np.sum(activations_t_1)
-            
-            # for key, values in self.y.items():
-            #     score = np.sum(np.array(values) == activations_t_1)
-            if score > best_score:
-                best_score = score
-                likely_class = i
-                final_activations_t_1 = activations_t_1
+            for key, values in self.y.items():
+                # score = np.sum(np.array(values) == activations_t_1)
+                score = np.dot(activations_t_1, np.array(values))
+                if score > best_score:
+                    best_score = score
+                    likely_class = key
+                    final_activations_t_1 = activations_t_1
 
         return likely_class, final_activations_t_1
 
@@ -147,3 +149,11 @@ class Brain():
         print(f"Total correct: {correct}/{len(X_test)}")
         print("Wrong predictions:", wrong)
         return correct / len(X_test)
+    
+    def generate_image(self, label):
+        assembly = np.array(self.y[label])
+        estimated_input = assembly @ self.weights.T
+        estimated_input = estimated_input.reshape((56, 56))
+        return estimated_input
+    
+    

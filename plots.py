@@ -34,18 +34,19 @@ def get_data(no_data_items, X_train, y_train):
 def assemblies_and_weights(cap_size=200, beta=1):
     brain = Brain(no_classes=10, cap_size=cap_size, n=5625, in_n=784*4, beta=beta)
     (X_train, y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
-    data, labels, no_of_rounds = get_data(300, X_train, y_train)
+    no_training_data = 300
+    data, labels, no_of_rounds = get_data(no_training_data, X_train, y_train)
     assembly_size = 75
     no_test_data = 1000
     
     training_y = brain.section_training(data, no_rounds=no_of_rounds)
-    score = brain.score(data[:no_test_data], labels[:no_test_data])
+    score = brain.score(data[:no_training_data], labels[:no_training_data])
     
     test_data = np.array([x.flatten() for x in X_test])
     test_score = brain.score(test_data[:no_test_data], y_test[:no_test_data])
     
     print("Training accuracy: ", score)
-    print("Test training accuracy: ", test_score)
+    print("Test accuracy: ", test_score)
 
     # Plotting the assemblies for each class
     res = []
@@ -80,10 +81,29 @@ def assemblies_and_weights(cap_size=200, beta=1):
     fig.savefig('plots/assemblies.png')
 
     # Plotting the weights
-    fig, ax = plt.subplots(figsize=(75, 75))
-    ax.imshow(brain.weights, cmap='hot', interpolation='nearest')
-    fig.savefig('plots/weights.png')
+    # fig, ax = plt.subplots(figsize=(75, 75))
+    # ax.imshow(brain.weights, cmap='hot', interpolation='nearest')
+    # fig.savefig('plots/weights.png')
 
+def generate():
+    brain = Brain(no_classes=10, cap_size=200, n=5625, in_n=784*4, beta=1)
+    (X_train, y_train),(_,_) = keras.datasets.mnist.load_data()
+    data, labels, no_of_rounds = get_data(300, X_train, y_train)
+    
+    _ = brain.section_training(data, no_rounds=no_of_rounds)
+    
+    score = brain.score(data[:300], labels[:300])
+    print("Training accuracy: ", score)
+
+    fig, axes = plt.subplots(1, 10, figsize=(50, 50))
+
+    for i in range(10):
+        img = brain.generate_image(label=i)
+        axes[1, i].imshow(img, cmap='gray')
+        axes[1, i].title.set_text(f'Generated number: {i}')
+        axes[1, i].axis('off')
+    
+    fig.savefig("plots/generate.png")
 
 def benchmark_param(
     brain_callback,
@@ -96,46 +116,26 @@ def benchmark_param(
     items = []
     test_accuracies = []
     train_accuracy = []
-    
-  
+
     (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()    
-    y_train = y_train[:no_data_items]
-    
-    idxs = np.argsort(y_train)
-    X_train = [X_train[j] for j in idxs]
-    y_train = [y_train[k] for k in idxs]
-    no_of_rounds = [y_train.count(z) for z in range(10)]
-    
-    input = np.array([x.flatten() for x in X_train])
-    input_test = np.array([p.flatten() for p in X_test])
-    
-    '''
-    Accuracy before training
-    '''
+    data, labels, no_of_rounds = get_data(no_data_items, X_train, y_train)
+    test_data = np.array([p.flatten() for p in X_test])
+ 
     brain = brain_callback(0)
-    brain.section_training(input, no_rounds=[1]*10)
-    first_test_acc = brain.score(input_test[:no_test_data], y_test[:no_test_data])
-    first_train_acc = brain.score(input, y_train)
+    brain.section_training(data, no_rounds=[1]*10)
+    first_test_acc = brain.score(test_data[:no_test_data], y_test[:no_test_data])
+    first_train_acc = brain.score(data, labels)
     
     items.append(item_callback(0))
     test_accuracies.append(first_test_acc)
     train_accuracy.append(first_train_acc)
 
     for i in range(1, no_iterations + 1):
-        # y_train[:no_of_rounds[0]], y_train[no_of_rounds[0]:no_of_rounds[1]] = y_train[no_of_rounds[-1]], y_train[:no_of_rounds[0]]
-        # print("no_of_rounds", no_of_rounds)
-        
-        # y_train[:no_of_rounds[0]], y_train[np.sum(no_of_rounds[:-1]):] = y_train[np.sum(no_of_rounds[:-1]):], y_train[:no_of_rounds[0]]
-        
-        # X_train[:no_of_rounds[0]], X_train[np.sum(no_of_rounds[:-1]):] = X_train[np.sum(no_of_rounds[:-1]):], X_train[:no_of_rounds[0]]
-        
-        # no_of_rounds[0], no_of_rounds[-1] = no_of_rounds[-1], no_of_rounds[0]
-
         brain = brain_callback(i)
-        brain.section_training(input, no_rounds=no_of_rounds)
+        brain.section_training(data, no_rounds=no_of_rounds)
         
-        train_acc = brain.score(input[:no_data_items], y_train[:no_data_items])
-        acc = brain.score(input_test[:no_test_data], y_test[:no_test_data])
+        train_acc = brain.score(data[:no_data_items], labels[:no_data_items])
+        acc = brain.score(test_data[:no_test_data], y_test[:no_test_data])
 
         print(f"Accuracy for {name} {item_callback(i)}: {acc}")
         items.append(item_callback(i))
@@ -225,21 +225,22 @@ if __name__ == '__main__':
     #     no_test_data=300,
     # )
 
-    # best_neuron_count = benchmark_param(
-    #     brain_callback=lambda i: Brain(p=0.1, no_classes=10, cap_size=10, n=1000, in_n=784, beta=0.1),
-    #     item_callback=lambda i: 100,
-    #     name="number_of_neurons",
-    #     no_data_items=100,
-    #     no_test_data=100,
-    #     no_iterations=1
-    # )
+    best_neuron_count = benchmark_param(
+        brain_callback=lambda i: Brain(p=0.1, no_classes=10, cap_size=25*i + 150, n=1000 * i + 1000, in_n=784*4, beta=1),
+        item_callback=lambda i: 1000 * i + 1000,
+        name="number_of_neurons",
+        no_data_items=300,
+        no_test_data=300,
+        no_iterations=15
+    )
     
     # overlap_plots(
     #     Brain(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
     #     no_data_items=1000
     # )
 
-    assemblies_and_weights()
+    # assemblies_and_weights()
+    # generate()
     
     partial_time = time.time() - start
     print(f"Time taken: {partial_time}")
