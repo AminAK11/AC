@@ -151,9 +151,15 @@ class Brain():
         return correct / len(X_test)
     
     def generate_image(self, label):
-        assembly = np.array(self.y[label])
-        estimated_input = assembly @ self.weights.T
-        estimated_input = estimated_input.reshape((56, 56))
+        neuron_pr_class = self.n / self.no_classes
+        activations = np.random.choice([0., 1.], self.n, p = [1 - 0.2,  0.2])
+        
+        activations[:int(neuron_pr_class * label)] = 0
+        activations[int(neuron_pr_class * (label+1)):] = 0
+        
+        test = activations @ self.weights.T
+        test = self._k_cap(test, 450)
+        estimated_input = test.reshape((56, 56))
         return estimated_input
     
     

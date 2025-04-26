@@ -86,9 +86,9 @@ def assemblies_and_weights(cap_size=200, beta=1):
     # fig.savefig('plots/weights.png')
 
 def generate():
-    brain = Brain(no_classes=10, cap_size=200, n=5625, in_n=784*4, beta=1)
+    brain = Brain(no_classes=10, cap_size=1000, n=10000, in_n=784*4, beta=1)
     (X_train, y_train),(_,_) = keras.datasets.mnist.load_data()
-    data, labels, no_of_rounds = get_data(300, X_train, y_train)
+    data, labels, no_of_rounds = get_data(200, X_train, y_train)
     
     _ = brain.section_training(data, no_rounds=no_of_rounds)
     
@@ -99,9 +99,9 @@ def generate():
 
     for i in range(10):
         img = brain.generate_image(label=i)
-        axes[1, i].imshow(img, cmap='gray')
-        axes[1, i].title.set_text(f'Generated number: {i}')
-        axes[1, i].axis('off')
+        axes[i].imshow(img, cmap='gray')
+        axes[i].title.set_text(f'Generated number: {i}')
+        axes[i].axis('off')
     
     fig.savefig("plots/generate.png")
 
@@ -225,14 +225,14 @@ if __name__ == '__main__':
     #     no_test_data=300,
     # )
 
-    best_neuron_count = benchmark_param(
-        brain_callback=lambda i: Brain(p=0.1, no_classes=10, cap_size=25*i + 150, n=1000 * i + 1000, in_n=784*4, beta=1),
-        item_callback=lambda i: 1000 * i + 1000,
-        name="number_of_neurons",
-        no_data_items=300,
-        no_test_data=300,
-        no_iterations=15
-    )
+    # best_neuron_count = benchmark_param(
+    #     brain_callback=lambda i: Brain(p=0.1, no_classes=10, cap_size=25*i + 150, n=1000 * i + 1000, in_n=784*4, beta=1),
+    #     item_callback=lambda i: 1000 * i + 1000,
+    #     name="number_of_neurons",
+    #     no_data_items=300,
+    #     no_test_data=300,
+    #     no_iterations=15
+    # )
     
     # overlap_plots(
     #     Brain(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
@@ -240,7 +240,7 @@ if __name__ == '__main__':
     # )
 
     # assemblies_and_weights()
-    # generate()
+    generate()
     
     partial_time = time.time() - start
     print(f"Time taken: {partial_time}")
