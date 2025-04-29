@@ -3,7 +3,6 @@ rng = np.random.default_rng()
 np.set_printoptions(threshold=np.inf)
 import skimage.measure as sm
 
-
 class Brain():
     neurons: list
     inhibited: bool
@@ -68,7 +67,6 @@ class Brain():
 
         return resized.flatten()
 
-
     def training(self, test_input = None, no_rounds = None, activations_callback=None):
         bias = np.zeros(self.n)
         bias_penalty = -1
@@ -115,9 +113,43 @@ class Brain():
             bias[activations_t_1 > 0] += bias_penalty
         
         return self.y
+    
+    def _get_choice(self, acti):
+        n = len(acti) // 2
+        class_A = np.sum(acti[:n])
+        class_B = np.sum(acti[n:])
+        
+        return int(class_B > class_A)
+    
+    def binary_training(self, time_steps = 10, p_A = 0.5, p_B = 0.3):
+        choices = np.array([])
 
-    def predict(self, input, activations_callback=None):     
-        neuron_pr_class = self.n / self.no_classes   
+        for i in range(time_steps):
+            ''' first step: fire k random in stimuli area '''
+            c = self.cap_size / self.input_size
+            in_class_activations = np.random.choice([0, 1], self.input_size, p = [1 - c, c])
+
+            ''' second step: read choice from brain area '''
+            activations_t_1 = self._get_activations(in_class_activations)
+            choice = self._get_choice(activations_t_1)
+            choices = np.append(choices, choice)
+            
+            ''' third step: Sample decision '''
+            reward = np.random.binomial(n=1, p=p_B) if bool(choice) else np.random.binomial(n=1, p=p_A)
+            
+            if bool(reward):
+                section_size = int(self.n / self.no_classes)
+                activations_t_1[int(section_size * (choice+1)):] = 0
+                activations_t_1[:int(section_size * choice)] = 0
+
+                ''' fourth step: update weights '''
+                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
+                self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
+
+        return choices
+
+    def predict(self, input, activations_callback=None):
+        neuron_pr_class = self.n / self.no_classes
         likely_class = None
         best_score = 0
         final_activations_t_1 = None
