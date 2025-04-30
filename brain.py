@@ -115,15 +115,17 @@ class Brain():
         return self.y
     
     def _get_choice(self, acti):
-        n = len(acti) // 2
-        class_A = np.sum(acti[:n])
-        class_B = np.sum(acti[n:])
+        n = len(acti) // self.no_classes
+        classes = np.array([])
         
-        return int(class_B > class_A)
+        for i in range(self.no_classes):
+            classes = np.append(classes, np.sum([acti[i*n:(i+1)*n]]))
+            
+        return np.argmax(classes)
     
-    def binary_training(self, time_steps = 10, p_A = 0.5, p_B = 0.3):
-        choices = np.array([])
-
+    def binary_training(self, props, time_steps = 10):
+        choices = np.zeros((self.no_classes, time_steps))
+        
         for i in range(time_steps):
             ''' first step: fire k random in stimuli area '''
             c = self.cap_size / self.input_size
@@ -132,11 +134,11 @@ class Brain():
             ''' second step: read choice from brain area '''
             activations_t_1 = self._get_activations(in_class_activations)
             choice = self._get_choice(activations_t_1)
-            choices = np.append(choices, choice)
+            choices[choice, i] = 1
             
-            ''' third step: Sample decision '''
-            reward = np.random.binomial(n=1, p=p_B) if bool(choice) else np.random.binomial(n=1, p=p_A)
-            
+            ''' third step: Sample decision '''            
+            reward = np.random.binomial(n=1, p=props[choice])
+        
             if bool(reward):
                 section_size = int(self.n / self.no_classes)
                 activations_t_1[int(section_size * (choice+1)):] = 0
