@@ -114,7 +114,7 @@ class Brain():
         
         return self.y
     
-    def _get_choice(self, acti):
+    def get_choice(self, acti):
         n = len(acti) // self.no_classes
         classes = np.array([])
         
@@ -123,30 +123,43 @@ class Brain():
             
         return np.argmax(classes)
     
-    def binary_training(self, props, time_steps = 10):
+    def random_activations(self):
+        ''' first step: fire k random in stimuli area '''
+        c = self.cap_size / self.input_size
+        return np.random.choice([0, 1], self.input_size, p = [1 - c, c])
+    
+    def update_weights(self, in_class_activations, activations_t_1, choice, negative=False):
+        section_size = int(self.n / self.no_classes)
+        activations_t_1[int(section_size * (choice+1)):] = 0
+        activations_t_1[:int(section_size * choice)] = 0
+
+        outer_prod = np.outer(in_class_activations, activations_t_1) * (-self.beta if negative else self.beta)
+        self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
+
+    def binary_training(self, props, time_steps = 10, delta = None):
         choices = np.zeros((self.no_classes, time_steps))
         
-        for i in range(time_steps):
+        for i in range(time_steps):    
             ''' first step: fire k random in stimuli area '''
             c = self.cap_size / self.input_size
-            in_class_activations = np.random.choice([0, 1], self.input_size, p = [1 - c, c])
+            in_class_activations = self.random_activations()
 
-            ''' second step: read choice from brain area '''
-            activations_t_1 = self._get_activations(in_class_activations)
-            choice = self._get_choice(activations_t_1)
+            ''' second step: read choice from brain area '''                
+            use_random_choice = np.random.rand() < delta if delta is not None else False
+            activations_t_1 = None
+            if use_random_choice:
+                activations_t_1 = np.random.choice([0, 1], self.n, p = [1 - c, c])
+            else:
+                activations_t_1 = self._get_activations(in_class_activations)
+
+            choice = self.get_choice(activations_t_1)
             choices[choice, i] = 1
             
             ''' third step: Sample decision '''            
             reward = np.random.binomial(n=1, p=props[choice])
         
             if bool(reward):
-                section_size = int(self.n / self.no_classes)
-                activations_t_1[int(section_size * (choice+1)):] = 0
-                activations_t_1[:int(section_size * choice)] = 0
-
-                ''' fourth step: update weights '''
-                outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
-                self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
+                self.update_weights(in_class_activations, activations_t_1, choice)
 
         return choices
 
