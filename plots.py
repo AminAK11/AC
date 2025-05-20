@@ -172,6 +172,7 @@ def overlap_plots(brain, no_data_items=1000):
     def overlap(g, h):
         v = np.sum([a == 1 and b == 1 for (a, b) in zip(brain.y[g], brain.y[h])])
         return v / brain.cap_size
+    
     overlap_plot_matrix = np.zeros((10, 10))
     for g in range(10):
         for h in range(10):
@@ -234,13 +235,17 @@ if __name__ == '__main__':
     #     no_iterations=15
     # )
     
-    # overlap_plots(
-    #     Brain(p=0.1, no_classes=10, cap_size=80, n=200, in_n=784, beta=0.1),
-    #     no_data_items=1000
-    # )
+    overlap_plots(
+        Brain(no_classes=10, cap_size=1000, n=10000, in_n=784*4, beta=1),
+        no_data_items=1000
+    )
 
     # assemblies_and_weights()
-    generate()
+    # generate()
     
     partial_time = time.time() - start
     print(f"Time taken: {partial_time}")
+    
+
+# Training accuracy:  0.8
+# Test accuracy:  0.56

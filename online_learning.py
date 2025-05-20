@@ -5,32 +5,32 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 
 
 def get_brain():
-    return Brain(p = 0.1, cap_size = 100, beta = 0.05, no_classes = 3, n = 2000, in_n = 1000)
+    return Brain(p = 0.1, cap_size = 100, beta = 0.1, no_classes = 2, n = 700, in_n = 1000)
 
 def binary_training():
     brain = get_brain()
-    props = [0.865, 0.9, 0.935]
-    choices = brain.binary_training(props, time_steps=500, delta=0.1)
+    props = [0.4, 0.6]
+    choices = brain.binary_training(props, time_steps=100)
 
-    fig, ax = plt.subplots(2, 1, figsize=(50, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(20, 6))
     
     classes = [chr(ord("A") + i) for i in range(len(props))]
-    ax[0].set_yticks(range(len(classes)), labels=classes)
+    ax.set_yticks(range(len(classes)), labels=classes)
     fig.legend([str(props[i]) for i in range(len(props))])
-    ax[0].imshow(choices, cmap="binary", aspect="3")
-    ax[0].set_title(f"Game history \n props: {props}")
-    ax[0].set_xlabel("Time Steps")
-    ax[0].set_ylabel("Choices")
+    ax.imshow(choices, cmap="binary")
+    ax.set_title(f"Game history \n props: {props}")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Choices")
 
-    # no delta
-    brain = get_brain()
-    choices_no_delta = brain.binary_training(props, time_steps=500)
-    fig.legend([str(props[i]) for i in range(len(props))])
-    ax[1].set_yticks(range(len(classes)), labels=classes)
-    ax[1].imshow(choices_no_delta, cmap="binary", aspect="3")
-    ax[1].set_title(f"Game history without delta \n props: {props}")
-    ax[1].set_xlabel("Time Steps")
-    ax[1].set_ylabel("Choices")
+    # # no delta
+    # brain = get_brain()
+    # choices_no_delta = brain.binary_training(props, time_steps=100)
+    # fig.legend([str(props[i]) for i in range(len(props))])
+    # ax[1].set_yticks(range(len(classes)), labels=classes)
+    # ax[1].imshow(choices_no_delta, cmap="binary")
+    # ax[1].set_title(f"Game history without delta \n props: {props}")
+    # ax[1].set_xlabel("Time Steps")
+    # ax[1].set_ylabel("Choices")
     
     fig.savefig("plots/online_training.png")
 
@@ -67,7 +67,6 @@ def binary_training_test():
         
     print("accuracy", correct / n)
 
-
 def two_brains_binary_game(rounds=700):
     brain1 = Brain(p = 0.1, cap_size = 100, beta = 0.1, no_classes = 2, n = 2000, in_n = 1000)
     brain2 = Brain(p = 0.1, cap_size = 100, beta = 0.1, no_classes = 2, n = 2000, in_n = 1000)
@@ -78,20 +77,8 @@ def two_brains_binary_game(rounds=700):
         in_class_activations1 = brain1.random_activations()
         in_class_activations2 = brain2.random_activations()
         
-        c = brain1.cap_size / brain1.input_size
-        activations_t_1_1 = None
-        activations_t_1_2 = None
-        
-        if False:
-            activations_t_1_1 = activations_t_1_1 = np.random.choice([0, 1], brain1.n, p = [1 - c, c])
-        else:
-            activations_t_1_1 = brain1._get_activations(in_class_activations1)
-            
-        if False:
-            activations_t_1_2 = activations_t_1_2 = np.random.choice([0, 1], brain2.n, p = [1 - c, c])
-        else:
-            activations_t_1_2 = brain2._get_activations(in_class_activations1)
-            
+        activations_t_1_1 = brain1._get_activations(in_class_activations1) 
+        activations_t_1_2 = brain2._get_activations(in_class_activations1)
         
         b1choice = brain1.get_choice(activations_t_1_1)
         b1choices[b1choice, i] = 1
@@ -133,6 +120,6 @@ def two_brains_binary_game(rounds=700):
 
 
 if __name__ == '__main__':
-    # binary_training()
+    binary_training()
     # binary_training_test()
-    two_brains_binary_game()
+    # two_brains_binary_game()

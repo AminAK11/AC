@@ -92,7 +92,7 @@ class Brain():
         b[:int(neuron_pr_class * i)] = 0
         b[int(neuron_pr_class * (i+1)):] = 0
         
-        return b
+        return np.tanh(b)
     
     def section_training(self, test_input = None, no_rounds = None, activations_callback=None):
         bias = np.zeros(self.n)
@@ -104,7 +104,7 @@ class Brain():
             no_input = sum(no_rounds[:i])
             for j in range(no_rounds[i]):
                 in_class_activations = self._get_in_class_activations(test_input[no_input + j], activations_callback)
-                activations_t_1 = np.tanh(self.section_activations(in_class_activations, i, bias, neuron_pr_class))
+                activations_t_1 = self.section_activations(in_class_activations, i, bias, neuron_pr_class)
                 outer_prod = np.outer(in_class_activations, activations_t_1) * self.beta
                 self.weights = self.weights * (np.ones((len(in_class_activations), self.n)) + outer_prod)
 
