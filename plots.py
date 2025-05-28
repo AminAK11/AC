@@ -153,7 +153,7 @@ def benchmark_param(
     
     return items[np.argmax(test_accuracies)]
 
-def overlap_plots(brain, no_data_items=1000):
+def overlap_plots(brain, no_data_items=100):
     (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()    
     y_train = y_train[:no_data_items]
         
@@ -165,10 +165,10 @@ def overlap_plots(brain, no_data_items=1000):
     input = np.array([x.flatten() for x in X_train])
     input_test = np.array([p.flatten() for p in X_test])
     
-    brain.section_training(input, no_rounds=no_of_rounds)
+    brain.training(input, no_rounds=no_of_rounds)
     brain.predict(input_test[0].flatten())
     
-    fig2, ax = plt.subplots()
+    fig, ax = plt.subplots()
     def overlap(g, h):
         v = np.sum([a == 1 and b == 1 for (a, b) in zip(brain.y[g], brain.y[h])])
         return v / brain.cap_size
@@ -186,9 +186,9 @@ def overlap_plots(brain, no_data_items=1000):
         for j in range(10):
             ax.text(i,j, round(overlap_plot_matrix[i,j], 2), va='center', ha='center')
 
-    ax.imshow(overlap_plot_matrix, cmap='viridis',)
-    ax.set_title('Overlap between classes')
-    fig2.savefig('plots/overlap.png')
+    plt.imshow(overlap_plot_matrix, cmap='viridis', interpolation='nearest')
+    plt.title('Overlap between classes')
+    plt.savefig('plots/overlap.png')
 
 if __name__ == '__main__':
     start = time.time()
@@ -236,8 +236,8 @@ if __name__ == '__main__':
     # )
     
     overlap_plots(
-        Brain(no_classes=10, cap_size=1000, n=10000, in_n=784*4, beta=1),
-        no_data_items=1000
+        Brain(no_classes=10, cap_size=240, n=1000, in_n=784*4, beta=1),
+        no_data_items=100
     )
 
     # assemblies_and_weights()

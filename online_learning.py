@@ -86,13 +86,24 @@ def brain_game_1(rounds=500):
     brain2 = Brain(p = 0.1, cap_size = 200, beta = 0.1, no_classes = 2, n = 2000, in_n = 1000)
     b1choices = np.zeros((brain1.no_classes, rounds))
     b2choices = np.zeros((brain2.no_classes, rounds))
-
+    
+    freq_a_b1 = []
+    freq_b_b1 = []
+    
+    prob_array_a = []
+    prob_array_b = []
     for i in range(rounds):
-        in_class_activations1 = brain1.random_activations()
-        in_class_activations2 = brain2.random_activations()
-        
-        activations_t_1_1 = brain1._get_activations(in_class_activations1) 
-        activations_t_1_2 = brain2._get_activations(in_class_activations2)
+        choices = []
+        for _ in range(1):
+            in_class_activations1 = brain1.random_activations()
+            in_class_activations2 = brain2.random_activations()
+            
+            activations_t_1_1 = brain1._get_activations(in_class_activations1) 
+            activations_t_1_2 = brain2._get_activations(in_class_activations2)
+            choices.append(brain1.get_choice(activations_t_1_1))
+            
+        prob_array_b.append(sum(choices) / len(choices))
+        prob_array_a.append(1 - prob_array_b[i])
         
         b1choice = brain1.get_choice(activations_t_1_1)
         b1choices[b1choice, i] = 1
@@ -110,6 +121,11 @@ def brain_game_1(rounds=500):
             brain1.update_weights(in_class_activations1, activations_t_1_1, b1choice, negative=True)
 
             #b2choices[b2choice, i] = 0.7
+            
+    
+        freq_a_b1.append(np.sum(b1choices[0]) / (i + 1))
+        freq_b_b1.append(1 - freq_a_b1[i])
+    
     
     b1_a = np.sum(b1choices[0]) / len(b1choices[0])
     b1_b = np.sum(b1choices[1]) / len(b1choices[1])
@@ -158,7 +174,21 @@ def brain_game_1(rounds=500):
     ax[2].set_xlabel("Time Steps", fontsize=25)
     ax[2].set_ylabel("Choices", fontsize=25)
 
+
     fig.savefig("plots/braingames.png")
+    
+    fig, ax = plt.subplots()
+    ax.plot(freq_a_b1, color="black", label="Frequency of A in Brain 1")
+    ax.plot(freq_b_b1, color="blue", label="Frequency of B in Brain 1")
+    fig.savefig("plots/frequency_braingame.png")
+    
+    fig, ax = plt.subplots()
+    plt.xticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+    ax.plot(prob_array_a, color="black")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Probability")
+    # ax.plot(prob_array_b, color="blue", label="Probability of B in Brain 1")
+    fig.savefig("plots/probability_braingame.png")
 
 def brain_game_2(rounds):
     '''
@@ -264,4 +294,4 @@ if __name__ == '__main__':
     plt.close()
     # binary_training()
     # binary_training_test()
-    two_brains_binary_game(rounds=1000, version=1)
+    two_brains_binary_game(rounds=150, version=1)
