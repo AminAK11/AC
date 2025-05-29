@@ -10,7 +10,7 @@ def get_brain():
 def binary_training():
     brain = get_brain()
     props = [0.4, 0.6]
-    choices = brain.binary_training(props, time_steps=100)
+    choices, regret = brain.binary_training(props, time_steps=80)
 
     fig, ax = plt.subplots(1, 1, figsize=(20, 6))
     
@@ -33,6 +33,15 @@ def binary_training():
     # ax[1].set_ylabel("Choices")
     
     fig.savefig("plots/online_training.png")
+    
+        
+    # Plot regret
+    fig, ax = plt.subplots()
+    
+    ax.plot(regret[1:], color="black")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Regret")
+    fig.savefig("plots/regret_braingame2.png")
 
 def binary_training_test():
     correct = 0
@@ -86,6 +95,8 @@ def brain_game_1(rounds=500):
     brain2 = Brain(p = 0.1, cap_size = 200, beta = 0.1, no_classes = 2, n = 2000, in_n = 1000)
     b1choices = np.zeros((brain1.no_classes, rounds))
     b2choices = np.zeros((brain2.no_classes, rounds))
+    regret = []
+    curr_regret = []
     
     freq_a_b1 = []
     freq_b_b1 = []
@@ -115,18 +126,26 @@ def brain_game_1(rounds=500):
             brain1.update_weights(in_class_activations1, activations_t_1_1, b1choice)
             brain2.update_weights(in_class_activations2, activations_t_1_2, b1choice, negative=True)
             #b1choices[b1choice, i] = 0.7
+            curr_regret.append(1)
         else:
             #b2 wins
             brain2.update_weights(in_class_activations2, activations_t_1_2, b2choice)
             brain1.update_weights(in_class_activations1, activations_t_1_1, b1choice, negative=True)
+            
+            curr_regret.append(-1)
 
             #b2choices[b2choice, i] = 0.7
-            
+        
+        if i % 50 == 0:
+            brain1.weights = brain1.weights / brain1.weights.sum(axis=0)
+            brain2.weights = brain2.weights / brain2.weights.sum(axis=0)
     
         freq_a_b1.append(np.sum(b1choices[0]) / (i + 1))
         freq_b_b1.append(1 - freq_a_b1[i])
     
-    
+    for i in range(rounds):
+        regret.append((sum(regret[:i]) + 1 - (curr_regret[i])) / (i+1))
+
     b1_a = np.sum(b1choices[0]) / len(b1choices[0])
     b1_b = np.sum(b1choices[1]) / len(b1choices[1])
     b2_a = np.sum(b2choices[0]) / len(b2choices[0])
@@ -189,6 +208,15 @@ def brain_game_1(rounds=500):
     ax.set_ylabel("Probability")
     # ax.plot(prob_array_b, color="blue", label="Probability of B in Brain 1")
     fig.savefig("plots/probability_braingame.png")
+    
+    # Plot regret
+    fig, ax = plt.subplots()
+    
+    ax.plot(regret, color="black")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Regret")
+    fig.savefig("plots/regret_braingame.png")
+
 
 def brain_game_2(rounds):
     '''
@@ -292,6 +320,6 @@ def brain_game_2(rounds):
 
 if __name__ == '__main__':
     plt.close()
-    # binary_training()
+    binary_training()
     # binary_training_test()
-    two_brains_binary_game(rounds=150, version=1)
+    #two_brains_binary_game(rounds=500, version=1)

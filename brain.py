@@ -138,7 +138,8 @@ class Brain():
 
     def binary_training(self, props, time_steps = 10, delta = None):
         choices = np.zeros((self.no_classes, time_steps))
-        
+        curr_regret = []
+        regret = np.zeros(time_steps + 1)
         for i in range(time_steps):    
             ''' first step: fire k random in stimuli area '''
             c = self.cap_size / self.input_size
@@ -157,11 +158,20 @@ class Brain():
             
             ''' third step: Sample decision '''            
             reward = np.random.binomial(n=1, p=props[choice])
+
+            if choice == 0:
+                curr_regret = np.append(curr_regret, 0.4)
+            else:
+                curr_regret = np.append(curr_regret, 0.6)
         
             if bool(reward):
                 self.update_weights(in_class_activations, activations_t_1, choice)
+                        
+        for i in range(time_steps):
+            print(0.6 - curr_regret[i])
+            regret[i+1] = (regret[i] + 0.6 - curr_regret[i]) / (i+1)
 
-        return choices
+        return choices, regret
 
     def predict(self, input, activations_callback=None):
         neuron_pr_class = self.n / self.no_classes
