@@ -10,7 +10,13 @@ def get_brain():
 def binary_training():
     brain = get_brain()
     props = [0.4, 0.6]
-    choices, regret = brain.binary_training(props, time_steps=80)
+    choices, regret, prob_array_b = brain.binary_training(props, time_steps=100)
+    
+    fig, ax = plt.subplots()
+    ax.plot(prob_array_b, color="black")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Propability")
+    fig.savefig("plots/probability_multiarmed_bandit.png")
 
     fig, ax = plt.subplots(1, 1, figsize=(20, 6))
     
@@ -50,7 +56,7 @@ def binary_training_test():
         brain = get_brain()
 
         props = [np.random.rand() for _ in range(brain.no_classes)]
-        choices = brain.binary_training(props, time_steps=500)
+        choices, _, _ = brain.binary_training(props, time_steps=500)
         print("props: ", props)
 
         best = np.argmax(props)
@@ -101,20 +107,27 @@ def brain_game_1(rounds=500):
     freq_a_b1 = []
     freq_b_b1 = []
     
-    prob_array_a = []
-    prob_array_b = []
+    prob_array_1_b = []
+    prob_array_1_a = []
+    prob_array_2_b = []
+    prob_array_2_a = []
     for i in range(rounds):
-        choices = []
+        choices_1 = []
+        choices_2 = []
         for _ in range(1):
             in_class_activations1 = brain1.random_activations()
             in_class_activations2 = brain2.random_activations()
             
             activations_t_1_1 = brain1._get_activations(in_class_activations1) 
             activations_t_1_2 = brain2._get_activations(in_class_activations2)
-            choices.append(brain1.get_choice(activations_t_1_1))
+            choices_1.append(brain1.get_choice(activations_t_1_1))
+            choices_2.append(brain2.get_choice(activations_t_1_2))
             
-        prob_array_b.append(sum(choices) / len(choices))
-        prob_array_a.append(1 - prob_array_b[i])
+        prob_array_1_b.append(sum(choices_1) / len(choices_1))
+        prob_array_1_a.append(1 - prob_array_1_b[i])
+ 
+        prob_array_2_b.append(sum(choices_2) / len(choices_2))
+        prob_array_2_a.append(1 - prob_array_2_b[i])
         
         b1choice = brain1.get_choice(activations_t_1_1)
         b1choices[b1choice, i] = 1
@@ -126,13 +139,13 @@ def brain_game_1(rounds=500):
             brain1.update_weights(in_class_activations1, activations_t_1_1, b1choice)
             brain2.update_weights(in_class_activations2, activations_t_1_2, b1choice, negative=True)
             #b1choices[b1choice, i] = 0.7
-            curr_regret.append(1)
+            curr_regret.append(0)
         else:
             #b2 wins
             brain2.update_weights(in_class_activations2, activations_t_1_2, b2choice)
             brain1.update_weights(in_class_activations1, activations_t_1_1, b1choice, negative=True)
             
-            curr_regret.append(-1)
+            curr_regret.append(0.5)
 
             #b2choices[b2choice, i] = 0.7
         
@@ -144,7 +157,7 @@ def brain_game_1(rounds=500):
         freq_b_b1.append(1 - freq_a_b1[i])
     
     for i in range(rounds):
-        regret.append((sum(regret[:i]) + 1 - (curr_regret[i])) / (i+1))
+        regret.append((sum(regret[:i]) + curr_regret[i]) / (i+1))
 
     b1_a = np.sum(b1choices[0]) / len(b1choices[0])
     b1_b = np.sum(b1choices[1]) / len(b1choices[1])
@@ -203,10 +216,10 @@ def brain_game_1(rounds=500):
     
     fig, ax = plt.subplots()
     plt.xticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
-    ax.plot(prob_array_a, color="black")
+    ax.plot(prob_array_1_a, color="black")
+    ax.plot(prob_array_2_a, color="blue")
     ax.set_xlabel("Time Steps")
     ax.set_ylabel("Probability")
-    # ax.plot(prob_array_b, color="blue", label="Probability of B in Brain 1")
     fig.savefig("plots/probability_braingame.png")
     
     # Plot regret
@@ -317,9 +330,8 @@ def brain_game_2(rounds):
 
     fig.savefig(f"plots/braingames_2.png")
 
-
 if __name__ == '__main__':
     plt.close()
     binary_training()
     # binary_training_test()
-    #two_brains_binary_game(rounds=500, version=1)
+    # two_brains_binary_game(rounds=100, version=1)
