@@ -184,11 +184,11 @@ def overlap_plots(brain, no_data_items=100):
         
     for i in range(10):
         for j in range(10):
-            ax.text(i,j, round(overlap_plot_matrix[i,j], 2), va='center', ha='center')
+            ax.text(i,j, round(overlap_plot_matrix.T[i,j], 2), va='center', ha='center')
 
-    plt.imshow(overlap_plot_matrix, cmap='viridis', interpolation='nearest')
-    plt.title('Overlap between classes')
-    plt.savefig('plots/overlap.png')
+    ax.imshow(overlap_plot_matrix, cmap='viridis', interpolation='nearest')
+    ax.set_title('Overlap between classes')
+    fig.savefig('plots/overlap.png')
 
 if __name__ == '__main__':
     start = time.time()
